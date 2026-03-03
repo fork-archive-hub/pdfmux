@@ -1,6 +1,6 @@
 """Pipeline — tiered routing logic that picks the best extractor per PDF.
 
-This is the core of Readable. Instead of using one extraction method,
+This is the core of Pdfmux. Instead of using one extraction method,
 we detect the PDF type and route to the optimal extractor:
 
   Digital, clean → PyMuPDF (free, 0.01s/page)
@@ -15,10 +15,10 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from readable.detect import PDFClassification, classify
-from readable.extractors.fast import FastExtractor
-from readable.formatters.markdown import format_markdown
-from readable.postprocess import ProcessedResult, clean_and_score
+from pdfmux.detect import PDFClassification, classify
+from pdfmux.extractors.fast import FastExtractor
+from pdfmux.formatters.markdown import format_markdown
+from pdfmux.postprocess import ProcessedResult, clean_and_score
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ def _route_and_extract(
 def _try_table_extractor(file_path: Path) -> tuple[str, str]:
     """Try Docling for tables, fall back to PyMuPDF."""
     try:
-        from readable.extractors.tables import TableExtractor
+        from pdfmux.extractors.tables import TableExtractor
 
         ext = TableExtractor()
         return ext.name, ext.extract(file_path)
@@ -137,7 +137,7 @@ def _try_ocr_extractor(
 ) -> tuple[str, str]:
     """Try OCR for scanned pages, fall back to PyMuPDF."""
     try:
-        from readable.extractors.ocr import OCRExtractor
+        from pdfmux.extractors.ocr import OCRExtractor
 
         ext = OCRExtractor()
         return ext.name, ext.extract(file_path, pages=pages)
@@ -148,7 +148,7 @@ def _try_ocr_extractor(
         if len(raw.strip()) < 100:
             raise RuntimeError(
                 "PDF appears to be scanned/image-based. "
-                "Install OCR support with: pip install readable[ocr]"
+                "Install OCR support with: pip install pdfmux[ocr]"
             )
         return ext.name, raw
 
@@ -156,14 +156,14 @@ def _try_ocr_extractor(
 def _try_llm_extractor(file_path: Path) -> tuple[str, str]:
     """Try Gemini Flash LLM, fall back to best available."""
     try:
-        from readable.extractors.llm import LLMExtractor
+        from pdfmux.extractors.llm import LLMExtractor
 
         ext = LLMExtractor()
         return ext.name, ext.extract(file_path)
     except (ImportError, RuntimeError) as e:
         logger.info(f"LLM extractor unavailable ({e}), falling back")
         try:
-            from readable.extractors.ocr import OCRExtractor
+            from pdfmux.extractors.ocr import OCRExtractor
 
             ext_ocr = OCRExtractor()
             return ext_ocr.name, ext_ocr.extract(file_path)
@@ -186,7 +186,7 @@ def _handle_mixed_pdf(
 
     if classification.scanned_pages:
         try:
-            from readable.extractors.ocr import OCRExtractor
+            from pdfmux.extractors.ocr import OCRExtractor
 
             ext_ocr = OCRExtractor()
             ocr_text = ext_ocr.extract(file_path, pages=classification.scanned_pages)
@@ -221,7 +221,7 @@ def _format_output(
         return text
 
     if output_format == "json":
-        from readable.formatters.json_fmt import format_json
+        from pdfmux.formatters.json_fmt import format_json
 
         return format_json(
             text=processed.text,
@@ -233,7 +233,7 @@ def _format_output(
         )
 
     if output_format == "csv":
-        from readable.formatters.csv_fmt import format_csv
+        from pdfmux.formatters.csv_fmt import format_csv
 
         return format_csv(processed.text)
 

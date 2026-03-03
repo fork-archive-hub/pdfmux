@@ -1,12 +1,12 @@
-# Architecture — Readable
+# Architecture — Pdfmux
 
 See the full architecture document at:
-`Business Agents/products/readable/01-spec/ARCHITECTURE.md`
+`Business Agents/products/pdfmux/01-spec/ARCHITECTURE.md`
 
 ## Quick Reference
 
 ```
-readable CLI / MCP server
+pdfmux CLI / MCP server
     → pipeline.py (tiered routing)
         → detect.py (classify PDF type)
         → extractors/fast.py (PyMuPDF — 90% of PDFs)

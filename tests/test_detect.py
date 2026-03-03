@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from readable.detect import classify
+from pdfmux.detect import classify
 
 
 def test_classify_digital_pdf(digital_pdf: Path) -> None:

@@ -35,7 +35,7 @@ def format_markdown(text: str, add_frontmatter: bool = False, source: str = "") 
     result = re.sub(r"^[ \t]*[*•]\s", "- ", result, flags=re.MULTILINE)
 
     if add_frontmatter and source:
-        frontmatter = f"---\nsource: {source}\nconverter: readable\n---\n\n"
+        frontmatter = f"---\nsource: {source}\nconverter: pdfmux\n---\n\n"
         result = frontmatter + result
 
     return result

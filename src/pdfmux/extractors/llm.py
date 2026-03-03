@@ -65,7 +65,7 @@ class LLMExtractor:
         """
         if not _check_genai():
             raise ImportError(
-                "Google GenAI is not installed. Install with: pip install readable[llm]"
+                "Google GenAI is not installed. Install with: pip install pdfmux[llm]"
             )
 
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")

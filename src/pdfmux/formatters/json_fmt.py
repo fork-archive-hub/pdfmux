@@ -39,7 +39,7 @@ def format_json(
 
     output = {
         "source": source,
-        "converter": "readable",
+        "converter": "pdfmux",
         "extractor": extractor,
         "page_count": page_count,
         "confidence": round(confidence, 3),

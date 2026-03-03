@@ -41,7 +41,7 @@ class TableExtractor:
         """
         if not _check_docling():
             raise ImportError(
-                "Docling is not installed. Install with: pip install readable[tables]"
+                "Docling is not installed. Install with: pip install pdfmux[tables]"
             )
 
         from docling.document_converter import DocumentConverter

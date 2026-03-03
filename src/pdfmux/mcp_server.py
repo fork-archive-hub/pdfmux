@@ -1,10 +1,10 @@
-"""MCP server — expose Readable as a tool for AI agents.
+"""MCP server — expose Pdfmux as a tool for AI agents.
 
 Usage:
-    readable serve
+    pdfmux serve
 
 Then add to your Claude/Cursor config:
-    { "mcpServers": { "readable": { "command": "readable", "args": ["serve"] } } }
+    { "mcpServers": { "pdfmux": { "command": "pdfmux", "args": ["serve"] } } }
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import sys
 
-from readable.pipeline import process
+from pdfmux.pipeline import process
 
 
 def run_server() -> None:
@@ -69,7 +69,7 @@ def _handle_initialize(msg_id: int | str | None) -> None:
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
                 "serverInfo": {
-                    "name": "readable",
+                    "name": "pdfmux",
                     "version": "0.1.0",
                 },
             },
@@ -88,7 +88,7 @@ def _handle_tools_list(msg_id: int | str | None) -> None:
                     {
                         "name": "convert_pdf",
                         "description": (
-                            "Convert a PDF to AI-readable Markdown. "
+                            "Convert a PDF to AI-pdfmux Markdown. "
                             "Automatically detects the PDF type and picks the "
                             "best extraction method."
                         ),

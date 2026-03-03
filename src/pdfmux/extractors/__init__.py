@@ -15,5 +15,5 @@ class Extractor(Protocol):
 
     @property
     def name(self) -> str:
-        """Human-readable name of this extractor."""
+        """Human-pdfmux name of this extractor."""
         ...

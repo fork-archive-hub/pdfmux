@@ -1,10 +1,10 @@
 """CLI entry point — the user-facing interface.
 
 Usage:
-    readable invoice.pdf              → invoice.md
-    readable ./docs/ -o ./output/     → batch convert
-    readable report.pdf --confidence  → show confidence score
-    readable serve                    → start MCP server
+    pdfmux invoice.pdf              → invoice.md
+    pdfmux ./docs/ -o ./output/     → batch convert
+    pdfmux report.pdf --confidence  → show confidence score
+    pdfmux serve                    → start MCP server
 """
 
 from __future__ import annotations
@@ -15,11 +15,11 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from readable import __version__
-from readable.pipeline import process
+from pdfmux import __version__
+from pdfmux.pipeline import process
 
 app = typer.Typer(
-    name="readable",
+    name="pdfmux",
     help="The smart PDF-to-Markdown router. One command, zero config.",
     add_completion=False,
     no_args_is_help=True,
@@ -73,16 +73,16 @@ def convert(
 @app.command()
 def serve() -> None:
     """Start the MCP server for AI agent integration."""
-    from readable.mcp_server import run_server
+    from pdfmux.mcp_server import run_server
 
-    console.print("[bold]Starting Readable MCP server...[/bold]")
+    console.print("[bold]Starting Pdfmux MCP server...[/bold]")
     run_server()
 
 
 @app.command()
 def version() -> None:
     """Show the version."""
-    console.print(f"readable {__version__}")
+    console.print(f"pdfmux {__version__}")
 
 
 def _convert_file(

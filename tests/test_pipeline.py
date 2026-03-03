@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from readable.pipeline import process
+from pdfmux.pipeline import process
 
 
 def test_process_digital_pdf(digital_pdf: Path) -> None:
@@ -50,7 +50,7 @@ def test_process_json_format(digital_pdf: Path) -> None:
     """JSON format should return valid structured JSON."""
     result = process(digital_pdf, output_format="json")
     data = json.loads(result.text)
-    assert data["converter"] == "readable"
+    assert data["converter"] == "pdfmux"
     assert data["page_count"] == 2
     assert data["confidence"] > 0
     assert "content" in data

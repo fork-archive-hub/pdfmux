@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from readable.extractors.fast import FastExtractor
-from readable.extractors.llm import LLMExtractor
-from readable.extractors.ocr import OCRExtractor
-from readable.extractors.tables import TableExtractor
+from pdfmux.extractors.fast import FastExtractor
+from pdfmux.extractors.llm import LLMExtractor
+from pdfmux.extractors.ocr import OCRExtractor
+from pdfmux.extractors.tables import TableExtractor
 
 
 class TestFastExtractor:

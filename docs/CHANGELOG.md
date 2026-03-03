@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2026-03-03
 
 ### Added
-- Docling table extractor (97.9% table accuracy) — `pip install readable[tables]`
-- Surya OCR extractor for scanned PDFs — `pip install readable[ocr]`
-- Gemini 2.5 Flash LLM fallback for hardest cases — `pip install readable[llm]`
+- Docling table extractor (97.9% table accuracy) — `pip install pdfmux[tables]`
+- Surya OCR extractor for scanned PDFs — `pip install pdfmux[ocr]`
+- Gemini 2.5 Flash LLM fallback for hardest cases — `pip install pdfmux[llm]`
 - JSON output format (`-f json`) with structured metadata and per-page chunks
 - CSV output format (`-f csv`) for table-heavy documents
 - Smart routing: pipeline now auto-routes to Docling/OCR/LLM when available
@@ -29,8 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF type detection (digital vs scanned, table detection)
 - PyMuPDF fast extractor for digital PDFs (~0.01s/page)
 - Markdown output formatter optimized for LLM consumption
-- CLI with `readable convert` command (single file and batch)
-- MCP server via `readable serve` for AI agent integration
+- CLI with `pdfmux convert` command (single file and batch)
+- MCP server via `pdfmux serve` for AI agent integration
 - Confidence scoring with `--confidence` flag
 - Post-processing: whitespace normalization, broken-word fixing, encoding cleanup
 - Quality presets: fast, standard, high

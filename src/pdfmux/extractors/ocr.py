@@ -49,7 +49,7 @@ class OCRExtractor:
         """
         if not _check_surya():
             raise ImportError(
-                "Surya OCR is not installed. Install with: pip install readable[ocr]"
+                "Surya OCR is not installed. Install with: pip install pdfmux[ocr]"
             )
 
         from PIL import Image

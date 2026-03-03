@@ -14,5 +14,5 @@ COPY --from=builder /app/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && \
     rm /tmp/*.whl
 
-ENTRYPOINT ["readable"]
+ENTRYPOINT ["pdfmux"]
 CMD ["--help"]
