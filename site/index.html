@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pdfmux — The smart PDF-to-Markdown router</title>
+  <meta name="description" content="One command, zero config. pdfmux auto-detects your PDF type and routes to the best extractor. CLI + MCP server for AI agents.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --fg: #e0e0e0;
+      --dim: #666;
+      --accent: #00ff88;
+      --code-bg: #141414;
+      --border: #222;
+      --font: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    header {
+      margin-bottom: 48px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .tagline {
+      color: var(--dim);
+      font-size: 13px;
+    }
+
+    .install {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin: 32px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .install:hover { border-color: var(--accent); }
+
+    .install code {
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .install .copy {
+      color: var(--dim);
+      font-size: 12px;
+      transition: color 0.2s;
+    }
+
+    .install:hover .copy { color: var(--fg); }
+
+    section { margin-bottom: 40px; }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    pre .comment { color: var(--dim); }
+    pre .cmd { color: var(--fg); }
+    pre .flag { color: #88aaff; }
+    pre .file { color: #ffaa44; }
+    pre .output { color: var(--accent); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+
+    .card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--dim);
+      margin-bottom: 4px;
+    }
+
+    .card .value {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .card .value.green { color: var(--accent); }
+    .card .value.blue { color: #88aaff; }
+    .card .value.orange { color: #ffaa44; }
+    .card .value.white { color: var(--fg); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--dim);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td:first-child { color: var(--fg); font-weight: 500; }
+
+    .free { color: var(--accent); }
+    .cost { color: #ffaa44; }
+
+    .mcp-config {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .mcp-config .key { color: #88aaff; }
+    .mcp-config .str { color: var(--accent); }
+    .mcp-config .brace { color: var(--dim); }
+
+    .links {
+      display: flex;
+      gap: 24px;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    a {
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+
+    a:hover { color: var(--accent); }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>pdfmux</span></h1>
+      <p class="tagline">The smart PDF-to-Markdown router. One command, zero config.</p>
+    </header>
+
+    <div class="install" onclick="copy()" id="installBox">
+      <code>$ pip install pdfmux</code>
+      <span class="copy" id="copyHint">click to copy</span>
+    </div>
+
+    <section>
+      <h2>Usage</h2>
+      <pre><span class="comment"># convert a pdf to markdown</span>
+<span class="cmd">$ pdfmux</span> <span class="file">invoice.pdf</span>
+<span class="output">✓ invoice.pdf → invoice.md (2 pages, 100% confidence)</span>
+
+<span class="comment"># json output with metadata</span>
+<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f json</span>
+
+<span class="comment"># batch convert</span>
+<span class="cmd">$ pdfmux</span> <span class="file">./docs/</span> <span class="flag">-o ./output/</span>
+
+<span class="comment"># start mcp server for ai agents</span>
+<span class="cmd">$ pdfmux serve</span></pre>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <p style="color: var(--dim); margin-bottom: 16px;">We don't convert PDFs. We route them to whichever tool converts them best.</p>
+      <table>
+        <thead>
+          <tr><th>PDF Type</th><th>Extractor</th><th>Speed</th><th>Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Digital</td><td>PyMuPDF</td><td>0.01s/pg</td><td class="free">Free</td></tr>
+          <tr><td>Tables</td><td>Docling</td><td>0.3-3s/pg</td><td class="free">Free</td></tr>
+          <tr><td>Scanned</td><td>Surya OCR</td><td>1-5s/pg</td><td class="free">Free</td></tr>
+          <tr><td>Complex</td><td>Gemini Flash</td><td>2-5s/pg</td><td class="cost">~$0.01</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Stats</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="label">Digital PDFs</div>
+          <div class="value green">0.01s/page</div>
+        </div>
+        <div class="card">
+          <div class="label">Table accuracy</div>
+          <div class="value blue">97.9%</div>
+        </div>
+        <div class="card">
+          <div class="label">Cost (90% of PDFs)</div>
+          <div class="value green">$0</div>
+        </div>
+        <div class="card">
+          <div class="label">Output format</div>
+          <div class="value orange">Markdown</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>MCP Server</h2>
+      <p style="color: var(--dim); margin-bottom: 12px;">Give your AI agent the ability to read PDFs:</p>
+      <div class="mcp-config">
+<span class="brace">{</span>
+  <span class="key">"mcpServers"</span>: <span class="brace">{</span>
+    <span class="key">"pdfmux"</span>: <span class="brace">{</span>
+      <span class="key">"command"</span>: <span class="str">"pdfmux"</span>,
+      <span class="key">"args"</span>: [<span class="str">"serve"</span>]
+    <span class="brace">}</span>
+  <span class="brace">}</span>
+<span class="brace">}</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Optional extractors</h2>
+      <pre><span class="cmd">$ pip install</span> <span class="file">pdfmux[tables]</span>  <span class="comment"># Docling</span>
+<span class="cmd">$ pip install</span> <span class="file">pdfmux[ocr]</span>     <span class="comment"># Surya OCR</span>
+<span class="cmd">$ pip install</span> <span class="file">pdfmux[llm]</span>     <span class="comment"># Gemini Flash</span>
+<span class="cmd">$ pip install</span> <span class="file">pdfmux[all]</span>     <span class="comment"># everything</span></pre>
+    </section>
+
+    <div class="links">
+      <a href="https://github.com/NameetP/pdfmux">GitHub</a>
+      <a href="https://github.com/NameetP/pdfmux#usage">Docs</a>
+      <a href="https://pypi.org/project/pdfmux/">PyPI</a>
+      <a href="https://github.com/NameetP/pdfmux/issues">Issues</a>
+    </div>
+
+    <footer>
+      MIT · Built by <a href="https://github.com/NameetP" style="color: var(--fg);">Nameet Potnis</a>
+    </footer>
+  </div>
+
+  <script>
+    function copy() {
+      navigator.clipboard.writeText('pip install pdfmux');
+      const hint = document.getElementById('copyHint');
+      hint.textContent = 'copied!';
+      hint.style.color = '#00ff88';
+      setTimeout(() => { hint.textContent = 'click to copy'; hint.style.color = ''; }, 2000);
+    }
+  </script>
+</body>
+</html>
