@@ -1,50 +1,61 @@
 # pdfmux
 
-The smart PDF-to-Markdown router. One command, zero config, best extractor per document.
+The smart PDF-to-Markdown router. One command, zero config.
 
-> We don't convert PDFs. We route them to whichever tool converts them best.
+```
+PDF ──→ pdfmux ──→ Markdown
+         │
+         ├─ digital?  → PyMuPDF     (0.01s/pg, free)
+         ├─ tables?   → Docling     (0.3s/pg, free)
+         ├─ scanned?  → Surya OCR   (1-5s/pg, free)
+         └─ complex?  → Gemini Flash (2-5s/pg, ~$0.01)
+```
+
+We don't convert PDFs. We route them to whichever tool converts them best.
+
+90% of PDFs are digital — converted in milliseconds, for free.
 
 ## Install
 
-```bash
+```
 pip install pdfmux
 ```
 
 ## Usage
 
 ```bash
-# Convert a PDF to Markdown
+# convert a pdf
 pdfmux invoice.pdf
+# ✓ invoice.pdf → invoice.md (2 pages, 0.02s)
 
-# Batch convert a directory
+# batch convert a directory
 pdfmux ./docs/ -o ./output/
 
-# JSON output with metadata
+# json output with metadata
 pdfmux report.pdf -f json
 
-# Show confidence score
-pdfmux report.pdf --confidence
-
-# Start MCP server for AI agents
+# start mcp server for ai agents
 pdfmux serve
 ```
 
-## How It Works
+## How it works
 
-pdfmux auto-detects your PDF type and routes to the optimal extractor:
+pdfmux inspects each PDF, classifies it (digital, scanned, has tables, mixed),
+and routes to the fastest extractor that can handle it well:
 
 | PDF Type | Extractor | Speed | Cost |
 |----------|-----------|-------|------|
-| Digital (clean text) | PyMuPDF | 0.01s/page | Free |
+| Digital | PyMuPDF | 0.01s/page | Free |
 | Tables | Docling | 0.3-3s/page | Free |
 | Scanned | Surya OCR | 1-5s/page | Free |
 | Complex | Gemini Flash | 2-5s/page | ~$0.01/doc |
 
-90% of PDFs are digital — converted in milliseconds, for free.
+If an extractor isn't installed, pdfmux falls back to the next best option automatically.
+No errors, no config. It just works.
 
 ## MCP Server
 
-Add to your Claude / Cursor config:
+Give your AI agent the ability to read any PDF. Add to Claude Desktop or Cursor:
 
 ```json
 {
@@ -57,26 +68,30 @@ Add to your Claude / Cursor config:
 }
 ```
 
-Your AI agent can now read PDFs natively.
+Exposes a single `convert_pdf` tool over stdio MCP. Your agent calls it, gets Markdown back.
 
-## Optional Extractors
+## Optional extractors
+
+The base install handles digital PDFs (the vast majority). Add extras for harder cases:
 
 ```bash
 pip install pdfmux[tables]  # Docling — 97.9% table accuracy
-pip install pdfmux[ocr]     # Surya — scanned PDF support
-pip install pdfmux[llm]     # Gemini Flash — hardest cases
-pip install pdfmux[all]     # Everything
+pip install pdfmux[ocr]     # Surya OCR — scanned documents
+pip install pdfmux[llm]     # Gemini Flash — complex layouts
+pip install pdfmux[all]     # everything
 ```
 
-## Why Not Just Use X?
+## Why not just use X?
 
-| Tool | When to Use It Instead |
-|------|----------------------|
-| **Marker** | You need GPU-accelerated ML extraction for everything |
-| **Docling** | You only process table-heavy documents |
-| **pymupdf4llm** | You only have digital PDFs and want zero dependencies |
-| **pdfmux** | You want one tool that picks the right method automatically |
+| Tool | Good at | Limitation |
+|------|---------|-----------|
+| Marker | GPU ML extraction | Overkill for simple digital PDFs |
+| Docling | Tables | Slow on non-table documents |
+| pymupdf4llm | Fast digital text | Can't handle scanned or complex layouts |
+| **pdfmux** | Picking the right tool automatically | — |
+
+pdfmux uses these tools. It doesn't compete with them — it orchestrates them.
 
 ## License
 
-MIT
+[MIT](LICENSE)
