@@ -16,6 +16,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape as rich_escape
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
@@ -144,12 +145,19 @@ def bench(
 
     classification = classify(input_path)
     console.print(f"\n[bold]{input_path.name}[/bold] — {classification.page_count} pages")
-    console.print(
-        f"Detected: {'digital' if classification.is_digital else ''}"
-        f"{'scanned' if classification.is_scanned else ''}"
-        f"{'mixed' if classification.is_mixed else ''}"
-        f"{', tables' if classification.has_tables else ''}\n"
-    )
+    detected_types = []
+    if classification.is_digital:
+        detected_types.append("digital")
+    if classification.is_scanned:
+        detected_types.append("scanned")
+    if classification.is_mixed:
+        detected_types.append("mixed")
+    if classification.is_graphical:
+        n = len(classification.graphical_pages)
+        detected_types.append(f"[yellow]graphical ({n} image-heavy pages)[/yellow]")
+    if classification.has_tables:
+        detected_types.append("tables")
+    console.print(f"Detected: {', '.join(detected_types)}\n")
 
     extractors: list[tuple[str, str, type | None]] = [
         ("PyMuPDF", "pdfmux.extractors.fast", None),
@@ -188,7 +196,17 @@ def bench(
             raw = ext.extract(input_path)
             elapsed = time.perf_counter() - start
 
-            processed = clean_and_score(raw, classification.page_count)
+            is_fast = name == "PyMuPDF"
+            processed = clean_and_score(
+                raw,
+                classification.page_count,
+                extraction_limited=is_fast and classification.is_graphical,
+                graphical_page_count=(
+                    len(classification.graphical_pages)
+                    if is_fast and classification.is_graphical
+                    else 0
+                ),
+            )
             chars = len(raw)
             conf = processed.confidence
 
@@ -246,15 +264,25 @@ def _convert_file(
         console.print(result.text)
     else:
         output.write_text(result.text, encoding="utf-8")
+
+        # Color the confidence indicator based on quality
+        conf = result.confidence
+        if conf >= 0.8:
+            conf_str = f"[green]{conf:.0%} confidence[/green]"
+        elif conf >= 0.5:
+            conf_str = f"[yellow]{conf:.0%} confidence[/yellow]"
+        else:
+            conf_str = f"[red]{conf:.0%} confidence[/red]"
+
         console.print(
             f"[green]✓[/green] {input_path.name} → {output.name} "
-            f"({result.page_count} pages, {result.confidence:.0%} confidence, "
+            f"({result.page_count} pages, {conf_str}, "
             f"via {result.extractor_used})"
         )
 
     if result.warnings:
         for warning in result.warnings:
-            console.print(f"  [yellow]⚠[/yellow] {warning}")
+            console.print(f"  [yellow]⚠[/yellow] {rich_escape(warning)}")
 
 
 def _convert_directory(

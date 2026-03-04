@@ -63,7 +63,16 @@ def process(
     extractor, raw_text = _route_and_extract(file_path, classification, quality)
 
     # Step 3: Post-process and score confidence
-    processed = clean_and_score(raw_text, classification.page_count)
+    # Flag when extraction is likely incomplete (graphical PDF + fast extractor)
+    fast_on_graphical = (
+        classification.is_graphical and "fast" in extractor.lower()
+    )
+    processed = clean_and_score(
+        raw_text,
+        classification.page_count,
+        extraction_limited=fast_on_graphical,
+        graphical_page_count=len(classification.graphical_pages) if fast_on_graphical else 0,
+    )
 
     # Step 4: Format output
     formatted = _format_output(
@@ -99,6 +108,11 @@ def _route_and_extract(
     # High mode: use LLM for everything (if available)
     if quality == "high":
         return _try_llm_extractor(file_path)
+
+    # Graphical PDFs: image-heavy content that fast extraction will miss
+    # Route to OCR or LLM — fast extraction only as last resort
+    if classification.is_graphical:
+        return _handle_graphical_pdf(file_path, classification)
 
     # Standard mode: route based on classification
     if classification.is_digital and not classification.has_tables:
@@ -168,6 +182,51 @@ def _try_llm_extractor(file_path: Path) -> tuple[str, str]:
         except ImportError:
             ext_fast = FastExtractor()
             return ext_fast.name, ext_fast.extract(file_path)
+
+
+def _handle_graphical_pdf(file_path: Path, classification: PDFClassification) -> tuple[str, str]:
+    """Handle graphical/image-heavy PDFs (e.g. pitch decks, infographics).
+
+    These PDFs have text rendered as images that fast extraction can't read.
+    Route to OCR or LLM if available, fall back to fast with honest warnings.
+    """
+    n_graphical = len(classification.graphical_pages)
+    n_total = classification.page_count
+
+    # Try OCR first — best for image-heavy pages
+    try:
+        from pdfmux.extractors.ocr import OCRExtractor
+
+        ext = OCRExtractor()
+        logger.info(
+            f"Graphical PDF detected ({n_graphical}/{n_total} image-heavy pages). "
+            f"Using OCR for full extraction."
+        )
+        return ext.name, ext.extract(file_path)
+    except ImportError:
+        pass
+
+    # Try LLM vision — catches everything but costs money
+    try:
+        from pdfmux.extractors.llm import LLMExtractor
+
+        ext = LLMExtractor()
+        logger.info(
+            f"Graphical PDF detected ({n_graphical}/{n_total} image-heavy pages). "
+            f"Using LLM vision for extraction."
+        )
+        return ext.name, ext.extract(file_path)
+    except (ImportError, RuntimeError):
+        pass
+
+    # Last resort: fast extraction — will miss image content
+    logger.warning(
+        f"Graphical PDF detected ({n_graphical}/{n_total} image-heavy pages) "
+        f"but no OCR or LLM extractor is installed. "
+        f"Text embedded in images will be missing from the output."
+    )
+    ext = FastExtractor()
+    return ext.name, ext.extract(file_path)
 
 
 def _handle_mixed_pdf(file_path: Path, classification: PDFClassification) -> tuple[str, str]:
