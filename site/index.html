@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pdfmux — PDF extraction that checks its own work</title>
-  <meta name="description" content="Self-healing PDF extraction for LLM pipelines. Extracts every page, audits quality, re-extracts bad pages with OCR. CLI + MCP server.">
+  <meta name="description" content="Self-healing PDF extraction for LLM pipelines. Python API + CLI + MCP server. Extracts every page, audits quality, re-extracts bad pages with OCR.">
   <meta name="theme-color" content="#1a1d23">
   <meta property="og:title" content="pdfmux">
   <meta property="og:description" content="PDF extraction that checks its own work. Built for LLM pipelines.">
@@ -70,6 +70,17 @@
       opacity: 0.7;
     }
 
+    .version-badge {
+      display: inline-block;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 8px;
+    }
+
     .install {
       background: var(--code-bg);
       border: 1px solid var(--border);
@@ -124,6 +135,10 @@
     pre .flag { color: #c4a7e7; }
     pre .file { color: #e0a870; }
     pre .output { color: #7ec9a2; }
+    pre .keyword { color: #c4a7e7; }
+    pre .func { color: #7c8af6; }
+    pre .str { color: #7ec9a2; }
+    pre .var { color: var(--fg); }
 
     .grid {
       display: grid;
@@ -248,7 +263,8 @@
         <a href="https://twitter.com/nameet" target="_blank" rel="noopener" style="color: var(--dim); text-decoration: none; font-size: 13px; margin-top: 8px; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--dim)'">@nameet</a>
       </div>
       <p class="tagline">PDF extraction that checks its own work.</p>
-      <p class="sub-tagline">Built for LLM pipelines.</p>
+      <p class="sub-tagline">Python API + CLI + MCP server. Built for LLM pipelines.</p>
+      <span class="version-badge">v0.4.0</span>
     </header>
 
     <div class="install" onclick="copy()" id="installBox">
@@ -257,7 +273,24 @@
     </div>
 
     <section>
-      <h2>Usage</h2>
+      <h2>Python API</h2>
+      <pre><span class="keyword">import</span> <span class="var">pdfmux</span>
+
+<span class="comment"># extract text as markdown</span>
+<span class="var">text</span> = pdfmux.<span class="func">extract_text</span>(<span class="str">"report.pdf"</span>)
+
+<span class="comment"># structured dict with locked schema</span>
+<span class="var">data</span> = pdfmux.<span class="func">extract_json</span>(<span class="str">"report.pdf"</span>)
+<span class="comment"># data["schema_version"]  →  "0.4.0"</span>
+<span class="comment"># data["ocr_pages"]       →  [2, 5, 8]</span>
+
+<span class="comment"># LLM-ready chunks with token estimates</span>
+<span class="var">chunks</span> = pdfmux.<span class="func">load_llm_context</span>(<span class="str">"report.pdf"</span>)
+<span class="comment"># [{title, text, page_start, page_end, tokens, confidence}]</span></pre>
+    </section>
+
+    <section>
+      <h2>CLI</h2>
       <pre><span class="comment"># convert a pdf — auto-audits every page</span>
 <span class="cmd">$ pdfmux</span> <span class="file">invoice.pdf</span>
 <span class="output">✓ invoice.pdf → invoice.md (2 pages, 95% confidence)</span>
@@ -265,6 +298,12 @@
 <span class="comment"># image-heavy pdf — bad pages re-extracted with ocr</span>
 <span class="cmd">$ pdfmux</span> <span class="file">pitch-deck.pdf</span>
 <span class="output">✓ pitch-deck.md (12 pages, 85% confidence, 6 pages OCR'd)</span>
+
+<span class="comment"># llm-ready chunked json with token estimates</span>
+<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f llm</span>
+
+<span class="comment"># per-page extraction breakdown</span>
+<span class="cmd">$ pdfmux analyze</span> <span class="file">report.pdf</span>
 
 <span class="comment"># batch convert a directory</span>
 <span class="cmd">$ pdfmux</span> <span class="file">./docs/</span> <span class="flag">-o ./output/</span>
@@ -287,6 +326,14 @@
     </section>
 
     <section>
+      <h2>Output formats</h2>
+      <pre><span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span>              <span class="comment"># → markdown (default)</span>
+<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f json</span>       <span class="comment"># → structured json + metadata</span>
+<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f llm</span>        <span class="comment"># → chunked json + token estimates</span>
+<span class="cmd">$ pdfmux</span> <span class="file">data.pdf</span>   <span class="flag">-f csv</span>        <span class="comment"># → tables as csv</span></pre>
+    </section>
+
+    <section>
       <h2>Stats</h2>
       <div class="grid">
         <div class="card">
@@ -302,8 +349,8 @@
           <div class="value green">$0</div>
         </div>
         <div class="card">
-          <div class="label">Confidence scoring</div>
-          <div class="value orange">Per-page</div>
+          <div class="label">Tests passing</div>
+          <div class="value orange">85</div>
         </div>
       </div>
     </section>
@@ -349,7 +396,8 @@
 
     <div class="links">
       <a href="https://github.com/NameetP/pdfmux">GitHub</a>
-      <a href="https://github.com/NameetP/pdfmux#how-it-works">Docs</a>
+      <a href="https://github.com/NameetP/pdfmux#python-api">API Docs</a>
+      <a href="https://github.com/NameetP/pdfmux#cli-usage">CLI Docs</a>
       <a href="https://pypi.org/project/pdfmux/">PyPI</a>
       <a href="https://github.com/NameetP/pdfmux/issues">Issues</a>
     </div>
