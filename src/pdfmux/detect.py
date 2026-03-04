@@ -15,12 +15,14 @@ class PDFClassification:
     is_digital: bool = False
     is_scanned: bool = False
     is_mixed: bool = False
+    is_graphical: bool = False  # Image-heavy — text in images that fast extraction misses
     has_tables: bool = False
     page_count: int = 0
     languages: list[str] = field(default_factory=list)
     confidence: float = 0.0
     digital_pages: list[int] = field(default_factory=list)
     scanned_pages: list[int] = field(default_factory=list)
+    graphical_pages: list[int] = field(default_factory=list)
 
 
 def classify(file_path: str | Path) -> PDFClassification:
@@ -43,24 +45,35 @@ def classify(file_path: str | Path) -> PDFClassification:
 
     digital_pages = []
     scanned_pages = []
+    graphical_pages = []
 
     for page_num in range(len(doc)):
         page = doc[page_num]
         text = page.get_text("text").strip()
         images = page.get_images(full=True)
+        text_len = len(text)
+        image_count = len(images)
 
-        # A page is "digital" if it has meaningful extractable text
-        # Heuristic: > 50 chars of text means digital
-        if len(text) > 50:
+        # --- Classify into digital / scanned (existing logic) ---
+        if text_len > 50:
             digital_pages.append(page_num)
         elif images:
             scanned_pages.append(page_num)
         else:
-            # Empty page or minimal content — treat as digital
             digital_pages.append(page_num)
+
+        # --- Detect graphical pages (NEW) ---
+        # A page is "graphical" if it has images but limited extractable text.
+        # This catches pitch decks, infographics, slides with text-in-images.
+        # Two tiers:
+        #   - ≥2 images + < 500 chars → likely has visual content PyMuPDF can't read
+        #   - ≥1 image + < 100 chars → almost no text, image-dominated
+        if (image_count >= 2 and text_len < 500) or (image_count >= 1 and text_len < 100):
+            graphical_pages.append(page_num)
 
     result.digital_pages = digital_pages
     result.scanned_pages = scanned_pages
+    result.graphical_pages = graphical_pages
 
     total = len(doc)
     if total == 0:
@@ -79,6 +92,11 @@ def classify(file_path: str | Path) -> PDFClassification:
     else:
         result.is_mixed = True
         result.confidence = 0.7  # Mixed docs are harder to classify
+
+    # Graphical detection: if >25% of pages are image-heavy with sparse text
+    graphical_ratio = len(graphical_pages) / total
+    if graphical_ratio > 0.25:
+        result.is_graphical = True
 
     # Table detection: look for ruled lines or grid patterns
     result.has_tables = _detect_tables(doc)

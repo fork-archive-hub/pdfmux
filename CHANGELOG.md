@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.2 (2026-03-04)
+
+### Added
+- **Graphical PDF detection** — detects image-heavy PDFs (pitch decks, infographics) and routes to OCR/LLM instead of fast extraction
+- **Honest confidence scoring** — confidence now reflects actual extraction quality, not just text presence. Graphical PDFs with missing image content score lower.
+- **Actionable warnings** — clear messages when extraction is limited, with specific `pip install pdfmux[ocr]` or `pdfmux[llm]` suggestions
+- **MCP server quality metadata** — AI agents now receive confidence score and warnings alongside extracted text
+- **Spaced-text cleanup** — fixes common PDF artifact where text renders as "W i t h  o v e r" → "With over"
+
+### Fixed
+- Detection no longer classifies image-heavy "digital" PDFs as fully extractable
+- Confidence no longer reports 100% on graphical PDFs where image content was missed
+- FastExtractor now falls back to raw fitz when pymupdf4llm returns empty (fixes certain PDF encodings)
+- bench command now shows honest confidence that matches pipeline routing
+
 ## 0.2.1 (2026-03-04)
 
 ### Added

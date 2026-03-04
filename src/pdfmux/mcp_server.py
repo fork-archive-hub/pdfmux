@@ -70,7 +70,7 @@ def _handle_initialize(msg_id: int | str | None) -> None:
                 "capabilities": {"tools": {}},
                 "serverInfo": {
                     "name": "pdfmux",
-                    "version": "0.1.0",
+                    "version": "0.2.2",
                 },
             },
         }
@@ -88,9 +88,11 @@ def _handle_tools_list(msg_id: int | str | None) -> None:
                     {
                         "name": "convert_pdf",
                         "description": (
-                            "Convert a PDF to AI-pdfmux Markdown. "
-                            "Automatically detects the PDF type and picks the "
-                            "best extraction method."
+                            "Convert a PDF to AI-readable Markdown. "
+                            "Automatically detects the PDF type (digital, "
+                            "graphical, scanned, mixed) and picks the best "
+                            "extraction method. Returns confidence score "
+                            "and warnings when extraction is limited."
                         ),
                         "inputSchema": {
                             "type": "object",
@@ -159,17 +161,45 @@ def _handle_tools_call(msg_id: int | str | None, params: dict) -> None:
             output_format=fmt,
             quality=quality,
         )
+
+        # Build response with extraction metadata and warnings
+        content_parts = []
+
+        # Add warnings/metadata header if confidence is below 80%
+        if result.confidence < 0.8 or result.warnings:
+            meta_lines = [
+                f"**Extraction confidence: {result.confidence:.0%}**",
+                f"Extractor: {result.extractor_used}",
+                f"Pages: {result.page_count}",
+            ]
+            if result.warnings:
+                meta_lines.append("")
+                meta_lines.append("**Warnings:**")
+                for w in result.warnings:
+                    meta_lines.append(f"- ⚠ {w}")
+            meta_lines.append("")
+            meta_lines.append("---")
+            meta_lines.append("")
+            content_parts.append(
+                {
+                    "type": "text",
+                    "text": "\n".join(meta_lines),
+                }
+            )
+
+        content_parts.append(
+            {
+                "type": "text",
+                "text": result.text,
+            }
+        )
+
         _write_message(
             {
                 "jsonrpc": "2.0",
                 "id": msg_id,
                 "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": result.text,
-                        }
-                    ],
+                    "content": content_parts,
                 },
             }
         )
