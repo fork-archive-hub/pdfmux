@@ -5,356 +5,483 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pdfmux — PDF extraction that checks its own work</title>
   <meta name="description" content="Self-healing PDF extraction for LLM pipelines. Python API + CLI + MCP server. Extracts every page, audits quality, re-extracts bad pages with OCR.">
-  <meta name="theme-color" content="#1a1d23">
+  <meta name="theme-color" content="#ffffff">
   <meta property="og:title" content="pdfmux">
   <meta property="og:description" content="PDF extraction that checks its own work. Built for LLM pipelines.">
-  <meta property="og:image" content="https://pdfmux.com/og.svg">
   <meta property="og:url" content="https://pdfmux.com">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="pdfmux">
   <meta name="twitter:description" content="PDF extraction that checks its own work. Built for LLM pipelines.">
-  <meta name="twitter:image" content="https://pdfmux.com/og.svg">
-  <meta name="twitter:creator" content="@nameet">
+  <meta name="twitter:creator" content="@nameetp">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #1a1d23;
-      --fg: #c9cdd4;
-      --dim: #6b7280;
-      --accent: #7c8af6;
-      --code-bg: #22262e;
-      --border: #2e3340;
-      --font: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace;
+      --bg: #ffffff;
+      --fg: #1a1a1a;
+      --dim: #6b6b6b;
+      --muted: #999999;
+      --accent: #000000;
+      --code-bg: #f6f6f6;
+      --border: #e5e5e5;
+      --green: #1a8a4a;
+      --blue: #2563eb;
+      --orange: #c2610c;
+      --font: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
     }
 
     body {
       font-family: var(--font);
       background: var(--bg);
       color: var(--fg);
-      line-height: 1.6;
-      font-size: 14px;
+      line-height: 1.7;
+      font-size: 15px;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    .container {
-      max-width: 640px;
+    /* --- NAV --- */
+    nav {
+      max-width: 720px;
       margin: 0 auto;
-      padding: 60px 24px;
+      padding: 24px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    header {
-      margin-bottom: 48px;
+    nav .logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--fg);
+      text-decoration: none;
+      letter-spacing: -0.3px;
     }
 
-    h1 {
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-      margin-bottom: 8px;
+    nav .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
     }
 
-    h1 span { color: var(--accent); }
-
-    .tagline {
+    nav .nav-links a {
+      font-size: 14px;
       color: var(--dim);
-      font-size: 13px;
-      margin-bottom: 4px;
+      text-decoration: none;
+      transition: color 0.15s;
     }
 
-    .sub-tagline {
+    nav .nav-links a:hover { color: var(--fg); }
+
+    /* --- CONTAINER --- */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 28px 80px;
+    }
+
+    /* --- HERO --- */
+    .hero {
+      padding: 56px 0 48px;
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.3;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
       color: var(--dim);
-      font-size: 12px;
-      opacity: 0.7;
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 520px;
     }
 
-    .version-badge {
-      display: inline-block;
+    .hero-ctas {
+      display: flex;
+      gap: 16px;
+      margin-top: 28px;
+      align-items: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--fg);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary:hover { opacity: 0.85; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      color: var(--dim);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-secondary:hover { border-color: var(--dim); color: var(--fg); }
+
+    /* --- INSTALL --- */
+    .install-box {
       background: var(--code-bg);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-size: 11px;
-      color: var(--accent);
-      margin-top: 8px;
-    }
-
-    .install {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 16px 20px;
-      margin: 32px 0;
+      border-radius: 10px;
+      padding: 14px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s;
+      margin-bottom: 56px;
     }
 
-    .install:hover { border-color: var(--accent); }
+    .install-box:hover { border-color: var(--dim); }
 
-    .install code {
-      color: var(--accent);
+    .install-box code {
+      font-family: var(--mono);
       font-size: 14px;
+      color: var(--fg);
     }
 
-    .install .copy {
-      color: var(--dim);
+    .install-box .copy-hint {
       font-size: 12px;
-      transition: color 0.2s;
+      color: var(--muted);
+      transition: color 0.15s;
     }
 
-    .install:hover .copy { color: var(--fg); }
+    .install-box:hover .copy-hint { color: var(--dim); }
 
-    section { margin-bottom: 40px; }
+    /* --- SECTIONS --- */
+    section {
+      margin-bottom: 56px;
+    }
 
     h2 {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
       color: var(--dim);
+      margin-bottom: 16px;
+      letter-spacing: 0.3px;
+    }
+
+    section > p {
+      color: var(--dim);
+      font-size: 15px;
       margin-bottom: 16px;
     }
 
+    /* --- CODE BLOCKS --- */
     pre {
       background: var(--code-bg);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 20px;
+      border-radius: 10px;
+      padding: 20px 24px;
       overflow-x: auto;
+      font-family: var(--mono);
       font-size: 13px;
-      line-height: 1.7;
+      line-height: 1.8;
+      color: var(--fg);
     }
 
-    pre .comment { color: #505868; }
-    pre .cmd { color: var(--fg); }
-    pre .flag { color: #c4a7e7; }
-    pre .file { color: #e0a870; }
-    pre .output { color: #7ec9a2; }
-    pre .keyword { color: #c4a7e7; }
-    pre .func { color: #7c8af6; }
-    pre .str { color: #7ec9a2; }
-    pre .var { color: var(--fg); }
+    pre .c { color: var(--muted); }
+    pre .k { color: #7c3aed; }
+    pre .f { color: #2563eb; }
+    pre .s { color: var(--green); }
+    pre .g { color: var(--green); }
+    pre .o { color: var(--orange); }
+    pre .fl { color: #7c3aed; }
 
-    .grid {
+    /* --- FEATURES GRID --- */
+    .features {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
 
-    @media (max-width: 480px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    .card {
-      background: var(--code-bg);
+    .feature {
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 16px;
+      border-radius: 10px;
+      padding: 20px;
+      transition: border-color 0.15s;
     }
 
-    .card .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--dim);
+    .feature:hover { border-color: var(--dim); }
+
+    .feature .title {
+      font-size: 14px;
+      font-weight: 600;
       margin-bottom: 4px;
     }
 
-    .card .value {
-      font-size: 16px;
-      font-weight: 600;
+    .feature .desc {
+      font-size: 13px;
+      color: var(--dim);
+      line-height: 1.5;
     }
 
-    .card .value.green { color: #7ec9a2; }
-    .card .value.blue { color: #7c8af6; }
-    .card .value.orange { color: #e0a870; }
-    .card .value.white { color: var(--fg); }
+    /* --- PIPELINE --- */
+    .pipeline {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-size: 14px;
+      line-height: 2;
+    }
 
+    .pipeline .step {
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .pipeline .detail {
+      color: var(--dim);
+    }
+
+    .pipeline .good { color: var(--green); font-weight: 500; }
+    .pipeline .fix { color: var(--orange); font-weight: 500; }
+
+    .pipeline .note {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* --- TABLE --- */
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 14px;
     }
 
-    th {
+    thead th {
       text-align: left;
-      font-weight: 600;
-      color: var(--dim);
-      padding: 8px 12px;
+      font-weight: 500;
+      color: var(--muted);
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
-      font-size: 11px;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    td {
-      padding: 10px 12px;
+    tbody td {
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
+      color: var(--dim);
     }
 
-    td:first-child { color: var(--fg); font-weight: 500; }
+    tbody td:first-child {
+      color: var(--fg);
+      font-weight: 500;
+    }
 
-    .free { color: #7ec9a2; }
-    .cost { color: #e0a870; }
+    .tag-free {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #ecfdf5;
+      color: var(--green);
+    }
 
-    .pipeline {
+    .tag-api {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #fff7ed;
+      color: var(--orange);
+    }
+
+    /* --- MCP CONFIG --- */
+    .mcp-block {
       background: var(--code-bg);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 20px;
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: var(--mono);
       font-size: 13px;
       line-height: 1.8;
       color: var(--dim);
     }
 
-    .pipeline .step { color: var(--fg); font-weight: 500; }
-    .pipeline .good { color: #7ec9a2; }
-    .pipeline .fix { color: #e0a870; }
+    .mcp-block .key { color: #7c3aed; }
+    .mcp-block .val { color: var(--green); }
 
-    .mcp-config {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 20px;
-      font-size: 13px;
-      line-height: 1.7;
-    }
-
-    .mcp-config .key { color: #c4a7e7; }
-    .mcp-config .str { color: #7ec9a2; }
-    .mcp-config .brace { color: var(--dim); }
-
-    .links {
-      display: flex;
-      gap: 24px;
-      margin-top: 48px;
-      padding-top: 24px;
+    /* --- FOOTER --- */
+    footer {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 28px 48px;
       border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
     }
 
-    a {
+    footer a {
       color: var(--dim);
       text-decoration: none;
-      font-size: 13px;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
 
-    a:hover { color: var(--accent); }
+    footer a:hover { color: var(--fg); }
 
-    footer {
-      margin-top: 64px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      color: var(--dim);
-      font-size: 12px;
+    footer .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 560px) {
+      .hero h1 { font-size: 26px; }
+      .features { grid-template-columns: 1fr; }
+      .hero-ctas { flex-direction: column; align-items: flex-start; }
+      footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+      nav { padding: 20px 20px; }
+      .container { padding: 0 20px 60px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <h1><span>pdfmux</span></h1>
-        <a href="https://twitter.com/nameet" target="_blank" rel="noopener" style="color: var(--dim); text-decoration: none; font-size: 13px; margin-top: 8px; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--dim)'">@nameet</a>
-      </div>
-      <p class="tagline">PDF extraction that checks its own work.</p>
-      <p class="sub-tagline">Python API + CLI + MCP server. Built for LLM pipelines.</p>
-      <span class="version-badge">v0.4.0</span>
-    </header>
 
-    <div class="install" onclick="copy()" id="installBox">
-      <code>$ pip install pdfmux</code>
-      <span class="copy" id="copyHint">click to copy</span>
+  <nav>
+    <a class="logo" href="/">pdfmux</a>
+    <div class="nav-links">
+      <a href="https://github.com/NameetP/pdfmux">docs</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- HERO -->
+    <div class="hero">
+      <h1>PDF extraction that<br>checks its own work</h1>
+      <p>Extracts every page. Audits quality. Re-extracts the ones that came out wrong. Python API + CLI + MCP server.</p>
+      <div class="hero-ctas">
+        <a class="btn-primary" href="https://github.com/NameetP/pdfmux">get started →</a>
+        <a class="btn-secondary" href="https://pypi.org/project/pdfmux/">v0.4.0 on PyPI</a>
+      </div>
     </div>
 
+    <!-- INSTALL -->
+    <div class="install-box" onclick="copyInstall()" id="installBox">
+      <code>pip install pdfmux</code>
+      <span class="copy-hint" id="copyHint">copy</span>
+    </div>
+
+    <!-- PYTHON API -->
     <section>
       <h2>Python API</h2>
-      <pre><span class="keyword">import</span> <span class="var">pdfmux</span>
+      <pre><span class="k">import</span> pdfmux
 
-<span class="comment"># extract text as markdown</span>
-<span class="var">text</span> = pdfmux.<span class="func">extract_text</span>(<span class="str">"report.pdf"</span>)
+<span class="c"># extract as markdown</span>
+text = pdfmux.<span class="f">extract_text</span>(<span class="s">"report.pdf"</span>)
 
-<span class="comment"># structured dict with locked schema</span>
-<span class="var">data</span> = pdfmux.<span class="func">extract_json</span>(<span class="str">"report.pdf"</span>)
-<span class="comment"># data["schema_version"]  →  "0.4.0"</span>
-<span class="comment"># data["ocr_pages"]       →  [2, 5, 8]</span>
+<span class="c"># structured json with locked schema</span>
+data = pdfmux.<span class="f">extract_json</span>(<span class="s">"report.pdf"</span>)
 
-<span class="comment"># LLM-ready chunks with token estimates</span>
-<span class="var">chunks</span> = pdfmux.<span class="func">load_llm_context</span>(<span class="str">"report.pdf"</span>)
-<span class="comment"># [{title, text, page_start, page_end, tokens, confidence}]</span></pre>
+<span class="c"># LLM-ready chunks with token estimates</span>
+chunks = pdfmux.<span class="f">load_llm_context</span>(<span class="s">"report.pdf"</span>)
+<span class="c"># → [{title, text, page_start, page_end, tokens, confidence}]</span></pre>
     </section>
 
+    <!-- CLI -->
     <section>
       <h2>CLI</h2>
-      <pre><span class="comment"># convert a pdf — auto-audits every page</span>
-<span class="cmd">$ pdfmux</span> <span class="file">invoice.pdf</span>
-<span class="output">✓ invoice.pdf → invoice.md (2 pages, 95% confidence)</span>
+      <pre><span class="c"># convert — auto-audits every page</span>
+$ pdfmux <span class="s">invoice.pdf</span>
+<span class="g">✓ invoice.md (2 pages, 95% confidence)</span>
 
-<span class="comment"># image-heavy pdf — bad pages re-extracted with ocr</span>
-<span class="cmd">$ pdfmux</span> <span class="file">pitch-deck.pdf</span>
-<span class="output">✓ pitch-deck.md (12 pages, 85% confidence, 6 pages OCR'd)</span>
+<span class="c"># image-heavy pdf — bad pages re-extracted with OCR</span>
+$ pdfmux <span class="s">pitch-deck.pdf</span>
+<span class="g">✓ pitch-deck.md (12 pages, 85% confidence, 6 OCR'd)</span>
 
-<span class="comment"># llm-ready chunked json with token estimates</span>
-<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f llm</span>
+<span class="c"># LLM-ready chunked json</span>
+$ pdfmux <span class="s">report.pdf</span> <span class="fl">-f llm</span>
 
-<span class="comment"># per-page extraction breakdown</span>
-<span class="cmd">$ pdfmux analyze</span> <span class="file">report.pdf</span>
+<span class="c"># per-page extraction breakdown</span>
+$ pdfmux analyze <span class="s">report.pdf</span>
 
-<span class="comment"># batch convert a directory</span>
-<span class="cmd">$ pdfmux</span> <span class="file">./docs/</span> <span class="flag">-o ./output/</span>
-
-<span class="comment"># start mcp server for ai agents</span>
-<span class="cmd">$ pdfmux serve</span></pre>
+<span class="c"># start MCP server for AI agents</span>
+$ pdfmux serve</pre>
     </section>
 
+    <!-- HOW IT WORKS -->
     <section>
       <h2>How it works</h2>
-      <p style="color: var(--dim); margin-bottom: 16px;">Extract every page. Audit quality. Re-extract the bad ones.</p>
       <div class="pipeline">
-        <span class="step">1. Fast extract</span> — PyMuPDF on every page (instant)<br>
-        <span class="step">2. Audit</span> — classify each page: <span class="good">good</span> / <span class="fix">bad</span> / empty<br>
-        <span class="step">3. Re-extract</span> — OCR only the <span class="fix">bad</span> pages (RapidOCR)<br>
-        <span class="step">4. Merge</span> — combine <span class="good">good</span> + OCR'd pages in order<br>
-        <br>
-        <span style="color: var(--dim);">All pages good? Zero OCR overhead. You only pay for what's broken.</span>
+        <span class="step">1. Fast extract</span> <span class="detail">— PyMuPDF on every page (instant)</span><br>
+        <span class="step">2. Audit</span> <span class="detail">— classify each page:</span> <span class="good">good</span> / <span class="fix">bad</span> / empty<br>
+        <span class="step">3. Re-extract</span> <span class="detail">— OCR only the</span> <span class="fix">bad</span> <span class="detail">pages</span><br>
+        <span class="step">4. Merge</span> <span class="detail">— combine</span> <span class="good">good</span> <span class="detail">+ fixed pages in order</span>
+        <div class="note">All pages good? Zero OCR overhead. You only pay for what's broken.</div>
       </div>
     </section>
 
+    <!-- FEATURES -->
     <section>
-      <h2>Output formats</h2>
-      <pre><span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span>              <span class="comment"># → markdown (default)</span>
-<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f json</span>       <span class="comment"># → structured json + metadata</span>
-<span class="cmd">$ pdfmux</span> <span class="file">report.pdf</span> <span class="flag">-f llm</span>        <span class="comment"># → chunked json + token estimates</span>
-<span class="cmd">$ pdfmux</span> <span class="file">data.pdf</span>   <span class="flag">-f csv</span>        <span class="comment"># → tables as csv</span></pre>
-    </section>
-
-    <section>
-      <h2>Stats</h2>
-      <div class="grid">
-        <div class="card">
-          <div class="label">Digital PDFs</div>
-          <div class="value green">0.01s/page</div>
+      <h2>Features</h2>
+      <div class="features">
+        <div class="feature">
+          <div class="title">Multi-pass pipeline</div>
+          <div class="desc">Extract, audit, re-extract. Every page verified.</div>
         </div>
-        <div class="card">
-          <div class="label">OCR install size</div>
-          <div class="value blue">~200MB</div>
+        <div class="feature">
+          <div class="title">LLM chunking</div>
+          <div class="desc">Section-aware splitting with token estimates for RAG.</div>
         </div>
-        <div class="card">
-          <div class="label">Cost (90% of PDFs)</div>
-          <div class="value green">$0</div>
+        <div class="feature">
+          <div class="title">Honest confidence</div>
+          <div class="desc">0-100% score that reflects actual extraction quality.</div>
         </div>
-        <div class="card">
-          <div class="label">Tests passing</div>
-          <div class="value orange">85</div>
+        <div class="feature">
+          <div class="title">MCP server</div>
+          <div class="desc">Give AI agents the ability to read any PDF.</div>
+        </div>
+        <div class="feature">
+          <div class="title">4 output formats</div>
+          <div class="desc">Markdown, JSON, CSV, or LLM-chunked JSON.</div>
+        </div>
+        <div class="feature">
+          <div class="title">Zero config</div>
+          <div class="desc">Works out of the box. OCR only when you need it.</div>
         </div>
       </div>
     </section>
 
+    <!-- EXTRACTORS -->
     <section>
       <h2>Extractors</h2>
       <table>
@@ -362,72 +489,67 @@
           <tr><th>Extractor</th><th>Handles</th><th>Speed</th><th>Install</th></tr>
         </thead>
         <tbody>
-          <tr><td>PyMuPDF</td><td>Digital text</td><td>0.01s/pg</td><td class="free">Base</td></tr>
-          <tr><td>RapidOCR</td><td>Scanned / images</td><td>0.5-2s/pg</td><td class="free">pdfmux[ocr]</td></tr>
-          <tr><td>Docling</td><td>Tables</td><td>0.3-3s/pg</td><td class="free">pdfmux[tables]</td></tr>
-          <tr><td>Gemini Flash</td><td>Complex layouts</td><td>2-5s/pg</td><td class="cost">pdfmux[llm]</td></tr>
+          <tr><td>PyMuPDF</td><td>Digital text</td><td>0.01s/pg</td><td><span class="tag-free">base</span></td></tr>
+          <tr><td>RapidOCR</td><td>Scanned / images</td><td>0.5-2s/pg</td><td><span class="tag-free">pdfmux[ocr]</span></td></tr>
+          <tr><td>Docling</td><td>Tables</td><td>0.3-3s/pg</td><td><span class="tag-free">pdfmux[tables]</span></td></tr>
+          <tr><td>Gemini Flash</td><td>Complex layouts</td><td>2-5s/pg</td><td><span class="tag-api">pdfmux[llm]</span></td></tr>
         </tbody>
       </table>
     </section>
 
+    <!-- MCP -->
     <section>
-      <h2>MCP Server</h2>
-      <p style="color: var(--dim); margin-bottom: 12px;">Give your AI agent the ability to read PDFs:</p>
-      <div class="mcp-config">
-<span class="brace">{</span>
-  <span class="key">"mcpServers"</span>: <span class="brace">{</span>
-    <span class="key">"pdfmux"</span>: <span class="brace">{</span>
-      <span class="key">"command"</span>: <span class="str">"pdfmux"</span>,
-      <span class="key">"args"</span>: [<span class="str">"serve"</span>]
-    <span class="brace">}</span>
-  <span class="brace">}</span>
-<span class="brace">}</span>
+      <h2>MCP server</h2>
+      <p>Give your AI agent the ability to read PDFs.</p>
+      <div class="mcp-block">
+<span class="dim">{</span>
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"pdfmux"</span>: {
+      <span class="key">"command"</span>: <span class="val">"pdfmux"</span>,
+      <span class="key">"args"</span>: [<span class="val">"serve"</span>]
+    }
+  }
+<span class="dim">}</span>
       </div>
-      <p style="color: var(--dim); margin-top: 12px; font-size: 12px;">Agents receive confidence scores + warnings when extraction is limited.</p>
     </section>
 
+    <!-- EXTRAS -->
     <section>
       <h2>Optional extras</h2>
-      <pre><span class="cmd">$ pip install</span> <span class="file">"pdfmux[ocr]"</span>     <span class="comment"># RapidOCR (~200MB, CPU)</span>
-<span class="cmd">$ pip install</span> <span class="file">"pdfmux[tables]"</span>  <span class="comment"># Docling</span>
-<span class="cmd">$ pip install</span> <span class="file">"pdfmux[llm]"</span>     <span class="comment"># Gemini Flash</span>
-<span class="cmd">$ pip install</span> <span class="file">"pdfmux[all]"</span>     <span class="comment"># everything</span></pre>
+      <pre><span class="c"># add OCR for scanned pages (~200MB, CPU-only)</span>
+$ pip install <span class="s">"pdfmux[ocr]"</span>
+
+<span class="c"># add table extraction</span>
+$ pip install <span class="s">"pdfmux[tables]"</span>
+
+<span class="c"># add Gemini Flash for complex layouts</span>
+$ pip install <span class="s">"pdfmux[llm]"</span>
+
+<span class="c"># install everything</span>
+$ pip install <span class="s">"pdfmux[all]"</span></pre>
     </section>
 
-    <div class="links">
-      <a href="https://github.com/NameetP/pdfmux">GitHub</a>
-      <a href="https://github.com/NameetP/pdfmux#python-api">API Docs</a>
-      <a href="https://github.com/NameetP/pdfmux#cli-usage">CLI Docs</a>
-      <a href="https://pypi.org/project/pdfmux/">PyPI</a>
-      <a href="https://github.com/NameetP/pdfmux/issues">Issues</a>
-    </div>
-
-    <footer>
-      <div>MIT · Built by <a href="https://github.com/NameetP" style="color: var(--fg);">Nameet Potnis</a></div>
-      <div style="margin-top: 8px;">
-        <a href="https://github.com/NameetP/pdfmux" style="color: var(--dim); text-decoration: none; font-size: 12px;" id="starCount"></a>
-      </div>
-    </footer>
-    <script>
-      fetch('https://api.github.com/repos/NameetP/pdfmux')
-        .then(r => r.json())
-        .then(d => {
-          if (d.stargazers_count !== undefined) {
-            document.getElementById('starCount').textContent = '★ ' + d.stargazers_count + ' on GitHub';
-          }
-        })
-        .catch(() => {});
-    </script>
   </div>
 
+  <!-- FOOTER -->
+  <footer>
+    <div>MIT · <a href="https://github.com/NameetP">Nameet Potnis</a></div>
+    <div class="footer-links">
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux/issues">issues</a>
+    </div>
+  </footer>
+
   <script>
-    function copy() {
+    function copyInstall() {
       navigator.clipboard.writeText('pip install pdfmux');
       const hint = document.getElementById('copyHint');
       hint.textContent = 'copied!';
-      hint.style.color = '#7ec9a2';
-      setTimeout(() => { hint.textContent = 'click to copy'; hint.style.color = ''; }, 2000);
+      hint.style.color = '#1a8a4a';
+      setTimeout(() => { hint.textContent = 'copy'; hint.style.color = ''; }, 2000);
     }
   </script>
+
 </body>
 </html>
