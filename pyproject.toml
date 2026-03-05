@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pdfmux"
-version = "0.9.0"
+version = "1.0.0"
 description = "PDF extraction that checks its own work. Typed, streaming multi-pass pipeline for LLM-ready Markdown."
 readme = "README.md"
 license = "MIT"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["pdf", "markdown", "llm", "ai", "mcp", "extraction", "converter"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -37,7 +37,9 @@ tables = ["docling>=2.0.0"]
 ocr = ["rapidocr>=3.0.0", "onnxruntime>=1.19.0"]
 ocr-heavy = ["surya-ocr>=0.6.0"]
 llm = ["google-genai>=1.0.0"]
-all = ["pdfmux[tables,ocr,llm]"]
+langchain = ["langchain-core>=0.2.0"]
+llamaindex = ["llama-index-core>=0.10.0"]
+all = ["pdfmux[tables,ocr,llm,langchain,llamaindex]"]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
