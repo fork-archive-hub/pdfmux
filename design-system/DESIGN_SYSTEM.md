@@ -40,15 +40,11 @@ All colors are defined as CSS custom properties in `:root`. **Never use raw hex,
 | Token | Light Value | Dark Value | Usage |
 |-------|------------|------------|-------|
 | `--green` | `#059669` | `#4ade80` | Success, "good" states, free tags |
-| `--green-light` | `#ecfdf5` | `#052e16` | Green tint backgrounds |
+| `--green-light` | `#ecfdf5` | `#052e16` | Green tint backgrounds (version badge) |
 | `--blue` | `#2563eb` | `#60a5fa` | Info, function names in code |
-| `--blue-light` | `#eff6ff` | `#172554` | Blue tint backgrounds |
 | `--orange` | `#d97706` | `#fbbf24` | Warnings, "fix" states, API tags |
-| `--orange-light` | `#fffbeb` | `#451a03` | Orange tint backgrounds |
 | `--purple` | `#7c3aed` | `#a78bfa` | Keywords in code |
-| `--purple-light` | `#f5f3ff` | `#2e1065` | Purple tint backgrounds |
 | `--rose` | `#e11d48` | `#fb7185` | Errors, destructive actions |
-| `--rose-light` | `#fff1f2` | `#4c0519` | Rose tint backgrounds |
 
 ### Shadows
 
@@ -62,9 +58,10 @@ All colors are defined as CSS custom properties in `:root`. **Never use raw hex,
 
 1. **All color references in CSS must use `var(--token-name)`**. Never write `color: #4f46e5` — write `color: var(--accent)`.
 2. **`:root` and `[data-theme="dark"]` are the only places raw hex values appear.** Any hex/rgb/hsl outside these is a violation.
-3. **Each semantic color has a light tint variant.** Use the `-light` variant for backgrounds, use the base for text/borders.
+3. **Only add `-light` tint tokens when actually used.** Don't define tokens speculatively.
 4. **Accent hover state is `#4338ca` (light) / `#6366f1` (dark).** Defined on `.btn-primary:hover`.
 5. **Dark mode is activated by `[data-theme="dark"]` on `<html>`.** Also respect `prefers-color-scheme: dark` as default when no preference is saved.
+6. **No per-card color variations.** Feature cards use one consistent style (`--code-bg` background). Let content differentiate cards, not decoration.
 
 ---
 
@@ -163,11 +160,12 @@ All colors are defined as CSS custom properties in `:root`. **Never use raw hex,
 
 ### Cards (`.feature`)
 
+- Background: `var(--code-bg)` — one consistent style, no per-card colors
 - Border: `1px solid var(--border)`
 - Radius: `10px`
 - Padding: `20px`
 - Hover: `border-color: var(--dim); transform: translateY(-1px)`
-- Each card has a unique background tint from the semantic color palette
+- Icon color: `var(--accent)` — icons carry the only accent color
 
 ### Code Blocks
 
@@ -298,17 +296,19 @@ Sections appear in this order on the page:
 2. Hero (title, subtitle, CTAs)
 3. Install box
 4. Social proof bar
-5. How it works (the differentiator)
-6. Python API
-7. CLI
+5. The problem (why pdfmux exists)
+6. How it works (pipeline overview)
+7. Python API
 8. Features grid
-9. Extractors table
-10. MCP server
-11. Optional extras
-12. Footer
+9. CLI
+10. Extractors table
+11. MCP server
+12. Framework integrations
+13. Optional extras
+14. Footer
 ```
 
-**Rule**: "How it works" must appear before code examples. It explains WHY before showing HOW.
+**Rule**: "The problem" and "How it works" must appear before code examples. Explain WHY before showing HOW.
 
 ---
 
@@ -325,6 +325,8 @@ Sections appear in this order on the page:
 9. **Width > 720px** — content must not exceed the max-width track.
 10. **Emoji icons in feature cards** — use inline SVG with `currentColor`.
 11. **`:hover` without `:focus-visible`** — every hover needs a keyboard equivalent.
+12. **Per-card rainbow backgrounds** — all cards use one neutral style. Color circus ≠ visual hierarchy.
+13. **Speculative tokens** — don't define `--foo-light` or `--foo-mid` unless something actually uses them.
 
 ---
 
