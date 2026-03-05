@@ -108,3 +108,5 @@ class Chunk:
     page_end: int  # 1-indexed
     tokens: int  # estimated token count (chars // 4)
     confidence: float  # inherited from document confidence
+    extractor: str = ""  # provenance: which extractor produced this content
+    ocr_applied: bool = False  # provenance: was OCR used for any page in this chunk

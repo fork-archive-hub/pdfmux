@@ -9,10 +9,16 @@ Usage:
     pdfmux serve                    → start MCP server
     pdfmux doctor                   → check your setup
     pdfmux bench report.pdf         → benchmark extractors
+
+Exit codes:
+    0 — success
+    1 — extraction or runtime error
+    2 — usage error (bad arguments, file not found)
 """
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 
@@ -32,6 +38,25 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+
+
+def _configure_logging(verbose: bool = False, debug: bool = False, quiet: bool = False) -> None:
+    """Configure pdfmux logging based on CLI flags."""
+    logger = logging.getLogger("pdfmux")
+    if debug:
+        level = logging.DEBUG
+    elif verbose:
+        level = logging.INFO
+    elif quiet:
+        level = logging.ERROR
+    else:
+        level = logging.WARNING
+
+    logger.setLevel(level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(name)s %(levelname)s: %(message)s"))
+        logger.addHandler(handler)
 
 
 @app.command()
@@ -69,8 +94,12 @@ def convert(
         "--stdout",
         help="Print output to stdout instead of writing to file.",
     ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show INFO-level logs."),
+    debug: bool = typer.Option(False, "--debug", help="Show DEBUG-level logs."),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress all logs except errors."),
 ) -> None:
     """Convert a PDF (or directory of PDFs) to Markdown."""
+    _configure_logging(verbose=verbose, debug=debug, quiet=quiet)
     if input_path.is_dir():
         _convert_directory(input_path, output, format, quality, confidence)
     else:

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 (2026-03-05)
+
+### Added
+- **Structured error codes** — every exception now has a `.code` class attribute (`PDF_NOT_FOUND`, `PDF_CORRUPTED`, `EXTRACTION_ERROR`, `PARTIAL_EXTRACTION`, `NO_EXTRACTOR`, `FORMAT_ERROR`, `AUDIT_ERROR`, `OCR_TIMEOUT`). Backward-compatible: existing catch blocks still work.
+- **`OCRTimeoutError`** — new exception for OCR timeout scenarios. Exported from `pdfmux`.
+- **Provenance on chunks** — `Chunk` dataclass now carries `extractor` and `ocr_applied` fields. Propagated through `chunk_by_sections()` and `format_llm()` output.
+- **JSON `error_code` field** — JSON output includes `error_code` (null on success). Per-page `ocr` boolean flag in pages array.
+- **CLI logging** — `--verbose` (INFO), `--debug` (DEBUG), `--quiet` (ERROR only) flags on `pdfmux convert`.
+- 17 new tests: error codes (13 tests) and provenance (4 tests).
+
+### Changed
+- `FileError` and `ExtractionError` accept optional `code=` keyword for specific error codes.
+- LLM format output now includes `extractor` and `ocr_applied` per chunk.
+- JSON schema version bumped to `0.7.0`.
+- Total test count: 110.
+
 ## 0.6.0 (2026-03-05)
 
 ### Added

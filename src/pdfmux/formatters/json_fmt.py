@@ -17,6 +17,8 @@ def format_json(
     extractor: str = "",
     warnings: list[str] | None = None,
     ocr_pages: list[int] | None = None,
+    *,
+    error_code: str | None = None,
 ) -> str:
     """Format extracted text as structured JSON with locked schema.
 
@@ -28,11 +30,13 @@ def format_json(
         extractor: Name of the extractor used.
         warnings: List of warning messages.
         ocr_pages: List of 0-indexed page numbers re-extracted with OCR.
+        error_code: Structured error code (null on success).
 
     Returns:
         JSON string with text and metadata.
     """
     # Split into pages if page separators exist
+    ocr_set = set(ocr_pages or [])
     page_separator = "\n\n---\n\n"
     if page_separator in text:
         pages = [p.strip() for p in text.split(page_separator)]
@@ -40,16 +44,19 @@ def format_json(
         pages = [text]
 
     output = {
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "source": source,
         "converter": "pdfmux",
         "extractor": extractor,
         "page_count": page_count,
         "confidence": round(confidence, 3),
+        "error_code": error_code,
         "warnings": warnings or [],
         "ocr_pages": ocr_pages or [],
         "content": text,
-        "pages": [{"page": i + 1, "text": page} for i, page in enumerate(pages)],
+        "pages": [
+            {"page": i + 1, "text": page, "ocr": i in ocr_set} for i, page in enumerate(pages)
+        ],
     }
 
     return json.dumps(output, indent=2, ensure_ascii=False)
@@ -59,23 +66,33 @@ def format_llm(
     text: str,
     source: str = "",
     confidence: float = 0.0,
+    *,
+    extractor: str = "",
+    ocr_applied: bool = False,
 ) -> str:
     """Format extracted text as LLM-ready chunked JSON.
 
     Uses section-aware chunking to split the document at heading
-    boundaries, with per-chunk token estimates.
+    boundaries, with per-chunk token estimates and provenance.
 
     Args:
         text: Post-processed extracted text.
         source: Source file path.
         confidence: Document-level confidence score.
+        extractor: Name of the extractor used.
+        ocr_applied: Whether OCR was used on any page.
 
     Returns:
         JSON string with chunked structure.
     """
     from pdfmux.chunking import chunk_by_sections
 
-    chunks = chunk_by_sections(text, confidence=confidence)
+    chunks = chunk_by_sections(
+        text,
+        confidence=confidence,
+        extractor=extractor,
+        ocr_applied=ocr_applied,
+    )
 
     output = {
         "document": source,
@@ -87,6 +104,8 @@ def format_llm(
                 "page_end": c.page_end,
                 "tokens": c.tokens,
                 "confidence": round(c.confidence, 3),
+                "extractor": c.extractor,
+                "ocr_applied": c.ocr_applied,
             }
             for c in chunks
         ],
