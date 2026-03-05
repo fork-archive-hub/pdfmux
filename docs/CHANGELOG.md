@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 (2026-03-05)
+
+### Added
+- **LangChain loader** (`integrations/langchain.py`) — `PDFMuxLoader(path, quality)` wraps `load_llm_context()`, returns `list[Document]` with metadata. Lazy import of langchain-core.
+- **LlamaIndex reader** (`integrations/llamaindex.py`) — `PDFMuxReader(quality)` wraps `load_llm_context()`, returns `list[Document]`. Lazy import of llama-index-core.
+- **Security hardening** — file size limit (500MB), page count limit (10,000), configurable via `PDFMUX_MAX_FILE_SIZE_MB` and `PDFMUX_MAX_PAGES` env vars.
+- **API stability tests** — signature-level tests lock function parameters, JSON schema fields, and `__all__` exports for the 1.x series.
+- **New optional extras**: `pdfmux[langchain]`, `pdfmux[llamaindex]`, updated `pdfmux[all]`.
+- 19 new tests: API stability (10 tests), integrations (6 tests), security (3 tests).
+
+### Changed
+- **Interface locked** — public API signatures frozen for 1.x (additive-only keyword args allowed). JSON schema frozen at 1.0.0.
+- Classifier upgraded to "Production/Stable".
+- JSON schema version bumped to `1.0.0`.
+- Total test count: 151.
+
 ## 0.9.0 (2026-03-05)
 
 ### Added

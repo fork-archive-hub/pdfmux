@@ -25,7 +25,7 @@ from pdfmux.audit import (
     score_page,
 )
 from pdfmux.detect import PDFClassification, classify
-from pdfmux.errors import FormatError
+from pdfmux.errors import FileError, FormatError
 from pdfmux.types import (
     OutputFormat,
     PageQuality,
@@ -37,6 +37,11 @@ logger = logging.getLogger(__name__)
 
 # OCR budget: cap at 30% of document pages in standard mode
 OCR_BUDGET_RATIO = float(os.environ.get("PDFMUX_OCR_BUDGET", "0.30"))
+
+# --- Security limits ---
+MAX_FILE_SIZE_MB = int(os.environ.get("PDFMUX_MAX_FILE_SIZE_MB", "500"))
+MAX_PAGE_COUNT = int(os.environ.get("PDFMUX_MAX_PAGES", "10000"))
+EXTRACTION_TIMEOUT_S = int(os.environ.get("PDFMUX_TIMEOUT", "300"))
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +94,16 @@ def process(
     """
     file_path = Path(file_path)
 
+    # Security: file size check
+    if file_path.exists():
+        file_size_mb = file_path.stat().st_size / (1024 * 1024)
+        if file_size_mb > MAX_FILE_SIZE_MB:
+            raise FileError(
+                f"File too large: {file_size_mb:.0f}MB exceeds "
+                f"{MAX_FILE_SIZE_MB}MB limit. Set PDFMUX_MAX_FILE_SIZE_MB to override.",
+                code="PDF_TOO_LARGE",
+            )
+
     # Validate format
     try:
         fmt = OutputFormat(output_format)
@@ -106,6 +121,14 @@ def process(
 
     # Step 1: Classify the PDF
     classification = classify(file_path)
+
+    # Security: page count check
+    if classification.page_count > MAX_PAGE_COUNT:
+        raise FileError(
+            f"Too many pages: {classification.page_count} exceeds "
+            f"{MAX_PAGE_COUNT} page limit. Set PDFMUX_MAX_PAGES to override.",
+            code="PDF_TOO_LARGE",
+        )
 
     # Step 2: Route to the best extractor, get page results
     pages, extractor_name, ocr_pages = _route_and_extract(file_path, classification, qual)
