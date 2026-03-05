@@ -177,24 +177,12 @@
 
     /* --- FEATURES GRID --- */
     .features { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .feature { border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: border-color 0.15s, transform 0.15s; }
+    .feature { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: border-color 0.15s, transform 0.15s; }
     .feature:hover { border-color: var(--dim); transform: translateY(-1px); }
-    .feature .icon { margin-bottom: 8px; display: block; color: var(--dim); }
+    .feature .icon { margin-bottom: 8px; display: block; color: var(--accent); }
     .feature .icon svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .feature .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
     .feature .desc { font-size: 14px; color: var(--dim); line-height: 1.5; }
-    .feature:nth-child(1) { background: var(--accent-light); border-color: var(--accent-mid); }
-    .feature:nth-child(2) { background: var(--green-light); border-color: var(--green-mid); }
-    .feature:nth-child(3) { background: var(--orange-light); border-color: var(--orange-mid); }
-    .feature:nth-child(4) { background: var(--purple-light); border-color: var(--purple-mid); }
-    .feature:nth-child(5) { background: var(--blue-light); border-color: var(--blue-mid); }
-    .feature:nth-child(6) { background: var(--rose-light); border-color: var(--rose-mid); }
-    .feature:nth-child(1):hover { border-color: var(--accent); }
-    .feature:nth-child(2):hover { border-color: var(--green); }
-    .feature:nth-child(3):hover { border-color: var(--orange); }
-    .feature:nth-child(4):hover { border-color: var(--purple); }
-    .feature:nth-child(5):hover { border-color: var(--blue); }
-    .feature:nth-child(6):hover { border-color: var(--rose); }
 
     /* --- PIPELINE --- */
     .pipeline { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 24px; font-size: 14px; line-height: 2; background: linear-gradient(135deg, var(--accent-light) 0%, var(--bg) 60%); }
