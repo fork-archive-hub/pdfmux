@@ -351,15 +351,42 @@ def _multipass_extract(
         f"(bad={len(audit.bad_pages)}, empty={len(audit.empty_pages)})"
     )
 
-    # Try RapidOCR first — now with parallel dispatch
+    # Region OCR for "bad" pages — preserve existing good text
+    bad_pages_set = set(audit.bad_pages)
+    region_ocr_pages = [p for p in pages_needing_ocr if p in bad_pages_set]
+    full_ocr_pages = [p for p in pages_needing_ocr if p not in bad_pages_set]
+
+    if region_ocr_pages:
+        try:
+            from pdfmux.regions import region_ocr_page
+
+            for page_num in region_ocr_pages:
+                page_audit = audit.pages[page_num]
+                merged, n_regions = region_ocr_page(
+                    file_path,
+                    page_num,
+                    page_audit.text,
+                )
+                if n_regions > 0 and len(merged.strip()) > len(page_audit.text.strip()):
+                    ocr_results[page_num] = merged
+                    logger.info(f"Region OCR page {page_num}: recovered {n_regions} regions")
+        except ImportError:
+            logger.debug("Region OCR requires RapidOCR — falling back to full-page OCR")
+            full_ocr_pages = pages_needing_ocr
+
+    # Full-page OCR for empty pages (and bad pages that region OCR didn't help)
+    still_need_full_ocr = [p for p in full_ocr_pages if p not in ocr_results]
+    still_need_full_ocr.extend(p for p in region_ocr_pages if p not in ocr_results)
+
+    # Try RapidOCR for remaining pages — now with parallel dispatch
     try:
         from pdfmux.extractors.rapid_ocr import RapidOCRExtractor
 
         ocr = RapidOCRExtractor()
-        if ocr.available():
+        if ocr.available() and still_need_full_ocr:
             from pdfmux.parallel import parallel_ocr
 
-            ocr_raw = parallel_ocr(file_path, pages_needing_ocr, ocr)
+            ocr_raw = parallel_ocr(file_path, still_need_full_ocr, ocr)
             for page_num, page_ocr in ocr_raw.items():
                 if not page_ocr.success:
                     continue
@@ -381,7 +408,7 @@ def _multipass_extract(
 
             ocr_legacy = OCRExtractor()
             if ocr_legacy.available():
-                for page_num in pages_needing_ocr:
+                for page_num in still_need_full_ocr:
                     ocr_pages_result = list(ocr_legacy.extract(file_path, pages=[page_num]))
                     ocr_text = ocr_pages_result[0].text if ocr_pages_result else ""
                     page_audit = audit.pages[page_num]

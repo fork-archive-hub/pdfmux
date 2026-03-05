@@ -108,6 +108,19 @@ class PageLayout:
 
 
 @dataclass(frozen=True)
+class WeakRegion:
+    """An image region on a page that lacks overlapping text.
+
+    Detected by region OCR to surgically extract text from
+    image areas without re-extracting the entire page.
+    """
+
+    page_num: int  # 0-indexed
+    bbox: tuple[float, float, float, float]  # (x0, y0, x1, y1)
+    reason: str  # why this region was flagged
+
+
+@dataclass(frozen=True)
 class Chunk:
     """Section-aware chunk for LLM consumption.
 
