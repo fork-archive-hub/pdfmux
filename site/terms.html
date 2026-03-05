@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terms of Use — pdfmux</title>
+  <meta name="description" content="Terms of use for pdfmux — open-source PDF extraction library.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x26A1;</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a1a;
+      --dim: #6b6b6b;
+      --muted: #999999;
+      --accent: #4f46e5;
+      --border: #e5e5e5;
+      --font: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.7;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav { max-width: 720px; margin: 0 auto; padding: 24px 28px; display: flex; justify-content: space-between; align-items: center; }
+    nav .logo { font-size: 17px; font-weight: 700; color: var(--fg); text-decoration: none; letter-spacing: -0.3px; }
+    nav .nav-links { display: flex; gap: 24px; align-items: center; }
+    nav .nav-links a { font-size: 14px; color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    nav .nav-links a:hover { color: var(--fg); }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 28px 80px; }
+
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 48px 0 8px; }
+    .updated { color: var(--muted); font-size: 13px; margin-bottom: 40px; }
+
+    h2 { font-size: 18px; font-weight: 600; color: var(--fg); margin: 36px 0 12px; text-transform: none; letter-spacing: 0; }
+    p { color: var(--dim); font-size: 15px; margin-bottom: 16px; line-height: 1.7; }
+    ul { color: var(--dim); font-size: 15px; margin-bottom: 16px; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--fg); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 14px; }
+
+    footer { max-width: 720px; margin: 0 auto; padding: 24px 28px 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+    footer a { color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: var(--fg); }
+    footer .footer-links { display: flex; gap: 20px; }
+
+    @media (max-width: 560px) {
+      h1 { font-size: 24px; }
+      footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+      nav { padding: 20px 20px; }
+      .container { padding: 0 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="logo" href="/">pdf<span style="color: var(--accent)">mux</span></a>
+    <div class="nav-links">
+      <a href="https://github.com/NameetP/pdfmux">docs</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>Terms of Use</h1>
+    <p class="updated">Last updated: March 5, 2026</p>
+
+    <h2>The software</h2>
+    <p>pdfmux is open-source software released under the <a href="https://opensource.org/licenses/MIT">MIT License</a>. You are free to use, modify, and distribute it in accordance with that license.</p>
+
+    <h2>MIT License summary</h2>
+    <p>The MIT License grants you permission to use pdfmux for any purpose &mdash; personal, commercial, or otherwise &mdash; with the following conditions:</p>
+    <ul>
+      <li>The copyright notice and permission notice must be included in all copies or substantial portions of the software.</li>
+      <li>The software is provided "as is", without warranty of any kind.</li>
+    </ul>
+    <p>The full license text is available in the <a href="https://github.com/NameetP/pdfmux/blob/main/LICENSE">LICENSE</a> file in the repository.</p>
+
+    <h2>No warranty</h2>
+    <p>pdfmux is provided without any warranty. We do not guarantee that the software will be error-free, uninterrupted, or fit for any particular purpose. PDF extraction quality depends on the input document, installed extractors, and system configuration.</p>
+
+    <h2>Your responsibility</h2>
+    <p>You are responsible for:</p>
+    <ul>
+      <li>Ensuring you have the right to process any PDFs you provide to pdfmux.</li>
+      <li>Reviewing extracted text before using it in production &mdash; especially for legal, medical, or financial documents.</li>
+      <li>Securing any API keys you configure for optional cloud extractors (e.g., Gemini API).</li>
+      <li>Complying with the terms of any third-party services you integrate with (LangChain, LlamaIndex, Google Gemini, etc.).</li>
+    </ul>
+
+    <h2>Website</h2>
+    <p>This website (pdfmux.com) is provided for informational purposes. We make reasonable efforts to keep the content accurate but do not guarantee that documentation, code examples, or installation instructions are always up to date.</p>
+
+    <h2>Limitation of liability</h2>
+    <p>In no event shall the authors or copyright holders be liable for any claim, damages, or other liability arising from the use of the software or this website. This includes, without limitation, any direct, indirect, incidental, or consequential damages.</p>
+
+    <h2>Changes</h2>
+    <p>We may update these terms from time to time. Changes will be reflected on this page with an updated date. Continued use of the software constitutes acceptance of the updated terms.</p>
+
+    <h2>Contact</h2>
+    <p>Questions? Open an issue on <a href="https://github.com/NameetP/pdfmux/issues">GitHub</a>.</p>
+  </div>
+
+  <footer>
+    <div>MIT &middot; <a href="https://github.com/NameetP">Nameet Potnis</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></div>
+    <div class="footer-links">
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux/issues">issues</a>
+    </div>
+  </footer>
+
+</body>
+</html>

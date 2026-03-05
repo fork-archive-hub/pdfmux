@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — pdfmux</title>
+  <meta name="description" content="Privacy policy for pdfmux — open-source PDF extraction library.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x26A1;</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a1a;
+      --dim: #6b6b6b;
+      --muted: #999999;
+      --accent: #4f46e5;
+      --border: #e5e5e5;
+      --font: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.7;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav { max-width: 720px; margin: 0 auto; padding: 24px 28px; display: flex; justify-content: space-between; align-items: center; }
+    nav .logo { font-size: 17px; font-weight: 700; color: var(--fg); text-decoration: none; letter-spacing: -0.3px; }
+    nav .nav-links { display: flex; gap: 24px; align-items: center; }
+    nav .nav-links a { font-size: 14px; color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    nav .nav-links a:hover { color: var(--fg); }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 28px 80px; }
+
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 48px 0 8px; }
+    .updated { color: var(--muted); font-size: 13px; margin-bottom: 40px; }
+
+    h2 { font-size: 18px; font-weight: 600; color: var(--fg); margin: 36px 0 12px; text-transform: none; letter-spacing: 0; }
+    p { color: var(--dim); font-size: 15px; margin-bottom: 16px; line-height: 1.7; }
+    ul { color: var(--dim); font-size: 15px; margin-bottom: 16px; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--fg); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    footer { max-width: 720px; margin: 0 auto; padding: 24px 28px 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+    footer a { color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: var(--fg); }
+    footer .footer-links { display: flex; gap: 20px; }
+
+    @media (max-width: 560px) {
+      h1 { font-size: 24px; }
+      footer { flex-direction: column; gap: 16px; align-items: flex-start; }
+      nav { padding: 20px 20px; }
+      .container { padding: 0 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="logo" href="/">pdf<span style="color: var(--accent)">mux</span></a>
+    <div class="nav-links">
+      <a href="https://github.com/NameetP/pdfmux">docs</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: March 5, 2026</p>
+
+    <h2>What pdfmux is</h2>
+    <p>pdfmux is an open-source Python library that runs entirely on your machine. It processes PDF files locally &mdash; no data is sent to any server unless you explicitly configure an optional cloud extractor.</p>
+
+    <h2>Data we collect</h2>
+    <p><strong>None.</strong> The pdfmux library does not collect, transmit, or store any personal data, usage data, or telemetry. Your PDFs stay on your machine.</p>
+
+    <h2>Website (pdfmux.com)</h2>
+    <p>This website is a static site hosted on GitHub Pages. We do not use cookies, analytics, or tracking scripts. GitHub may collect standard server logs (IP address, browser type) as part of hosting &mdash; see <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a> for details.</p>
+
+    <h2>Optional cloud extractors</h2>
+    <p>If you install <code>pdfmux[llm]</code> and configure a Gemini API key, pdfmux will send page images to Google's Gemini API for extraction. This is opt-in and requires your explicit API key configuration. The data handling for that request is governed by <a href="https://ai.google.dev/gemini-api/terms">Google's API terms</a>.</p>
+
+    <h2>PyPI</h2>
+    <p>When you install pdfmux via <code>pip install pdfmux</code>, your request goes through <a href="https://pypi.org">PyPI</a>. We do not have access to any data from pip installs.</p>
+
+    <h2>Third-party integrations</h2>
+    <p>pdfmux offers optional integrations with LangChain and LlamaIndex. These integrations run locally and do not transmit data on their own. Any data transmission depends on how you configure those frameworks in your application.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about this policy? Open an issue on <a href="https://github.com/NameetP/pdfmux/issues">GitHub</a>.</p>
+  </div>
+
+  <footer>
+    <div>MIT &middot; <a href="https://github.com/NameetP">Nameet Potnis</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></div>
+    <div class="footer-links">
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux/issues">issues</a>
+    </div>
+  </footer>
+
+</body>
+</html>
