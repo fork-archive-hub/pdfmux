@@ -17,6 +17,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { overflow-x: hidden; }
 
     :root {
       --bg: #ffffff;
@@ -169,7 +170,8 @@
     .code-copy:focus-visible { color: var(--fg); }
     .code-block pre { border: none; border-radius: 0; margin: 0; }
 
-    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--fg); }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--fg); max-width: 100%; }
+    .code-block { max-width: 100%; overflow: hidden; }
     pre .c { color: var(--muted); } pre .k { color: var(--purple); } pre .f { color: var(--blue); }
     pre .s { color: var(--green); } pre .g { color: var(--green); } pre .o { color: var(--orange); } pre .fl { color: var(--purple); }
 
@@ -203,6 +205,7 @@
     .pipeline .note { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; line-height: 1.5; }
 
     /* --- TABLE --- */
+    .table-wrap { overflow-x: auto; max-width: 100%; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     thead th { text-align: left; font-weight: 500; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
     tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--dim); }
@@ -211,7 +214,7 @@
     .tag-api { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: var(--tag-api-bg); color: var(--orange); }
 
     /* --- MCP --- */
-    .mcp-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--dim); }
+    .mcp-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--dim); overflow-x: auto; max-width: 100%; }
     .mcp-block .key { color: var(--purple); }
     .mcp-block .val { color: var(--green); }
 
@@ -224,13 +227,21 @@
 
     /* --- RESPONSIVE --- */
     @media (max-width: 560px) {
-      .hero h1 { font-size: 32px; }
+      .hero h1 { font-size: 28px; letter-spacing: -0.8px; }
+      .hero h1 br { display: none; }
+      .hero p { font-size: 16px; }
       .features { grid-template-columns: 1fr; }
       .hero-ctas { flex-direction: column; align-items: flex-start; }
       footer { flex-direction: column; gap: 16px; align-items: flex-start; }
       nav { padding: 20px 20px; }
+      nav .nav-links { gap: 12px; }
       .container { padding: 0 20px 60px; }
-      .social-proof { flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
+      .social-proof { flex-wrap: wrap; gap: 12px; justify-content: flex-start; font-size: 13px; }
+      h2 { font-size: 18px; }
+      .pipeline { padding: 20px; font-size: 13px; }
+      .code-header { padding: 10px 20px; }
+      .code-block pre { padding: 16px 20px; }
+      pre { padding: 16px 20px; }
     }
   </style>
 </head>
@@ -253,7 +264,7 @@
 
     <!-- HERO -->
     <div class="hero">
-      <h1>PDF extraction that<br>checks its own work</h1>
+      <h1>PDF extraction that <br>checks its own work</h1>
       <p>Every page extracted. Every page audited. Bad pages re-extracted with OCR automatically. Three lines of Python to production-grade PDF text for your LLM pipeline.</p>
       <div class="hero-ctas">
         <a class="btn-primary" href="https://github.com/NameetP/pdfmux">get started &rarr;</a>
@@ -387,17 +398,19 @@ $ pdfmux serve</pre>
     <!-- EXTRACTORS -->
     <section>
       <h2 data-label="Backends">Extractors</h2>
-      <table>
-        <thead>
-          <tr><th>Extractor</th><th>Handles</th><th>Speed</th><th>Install</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>PyMuPDF</td><td>Digital text</td><td>0.01s/pg</td><td><span class="tag-free">base</span></td></tr>
-          <tr><td>RapidOCR</td><td>Scanned / images</td><td>0.5-2s/pg</td><td><span class="tag-free">pdfmux[ocr]</span></td></tr>
-          <tr><td>Docling</td><td>Tables</td><td>0.3-3s/pg</td><td><span class="tag-free">pdfmux[tables]</span></td></tr>
-          <tr><td>Gemini Flash</td><td>Complex layouts</td><td>2-5s/pg</td><td><span class="tag-api">pdfmux[llm]</span></td></tr>
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Extractor</th><th>Handles</th><th>Speed</th><th>Install</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>PyMuPDF</td><td>Digital text</td><td>0.01s/pg</td><td><span class="tag-free">base</span></td></tr>
+            <tr><td>RapidOCR</td><td>Scanned / images</td><td>0.5-2s/pg</td><td><span class="tag-free">pdfmux[ocr]</span></td></tr>
+            <tr><td>Docling</td><td>Tables</td><td>0.3-3s/pg</td><td><span class="tag-free">pdfmux[tables]</span></td></tr>
+            <tr><td>Gemini Flash</td><td>Complex layouts</td><td>2-5s/pg</td><td><span class="tag-api">pdfmux[llm]</span></td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <!-- MCP -->

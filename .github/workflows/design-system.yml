@@ -1,0 +1,20 @@
+name: Design System
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'design-system/**']
+  pull_request:
+    branches: [main]
+    paths: ['site/**', 'design-system/**']
+
+jobs:
+  design-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run design system lint
+        run: python3 design-system/lint.py site/
