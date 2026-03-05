@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.0 (2026-03-05)
+
+### Added
+- **Region OCR** (`regions.py`) — surgical OCR of image regions within pages. `detect_weak_regions()` finds images without overlapping text. `ocr_region()` clips and OCRs just the image area. `merge_region_text()` inserts results at correct y-position. "Bad" pages now preserve good text while recovering image content.
+- **Enhanced MCP server** — 2 new tools: `analyze_pdf` (quick triage — classify + audit without extraction) and `batch_convert` (process entire directories). Error responses now include structured error codes.
+- **`WeakRegion` type** (`types.py`) — frozen dataclass with `page_num`, `bbox`, `reason`. Exported from `pdfmux`.
+- **Example scripts** (`examples/`) — `basic_usage.py`, `batch_processing.py`, `mcp_agent.py` with self-contained usage examples.
+- 14 new tests: region OCR (8 tests) and enhanced MCP (6 tests).
+
+### Changed
+- Multi-pass pipeline now tries region OCR on "bad" pages before falling back to full-page OCR.
+- JSON schema version bumped to `0.9.0`.
+- Total test count: 132.
+
 ## 0.8.0 (2026-03-05)
 
 ### Added

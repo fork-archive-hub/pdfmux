@@ -5,12 +5,18 @@ Usage:
 
 Then add to your Claude/Cursor config:
     { "mcpServers": { "pdfmux": { "command": "pdfmux", "args": ["serve"] } } }
+
+Tools:
+    convert_pdf   — extract text from a PDF (Markdown, JSON, LLM chunks)
+    analyze_pdf   — quick triage: classify + audit without full extraction
+    batch_convert — convert all PDFs in a directory
 """
 
 from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 from pdfmux.pipeline import process
 
@@ -64,7 +70,7 @@ def _handle_initialize(msg_id: int | str | None) -> None:
                 "capabilities": {"tools": {}},
                 "serverInfo": {
                     "name": "pdfmux",
-                    "version": "0.8.0",
+                    "version": "0.9.0",
                 },
             },
         }
@@ -110,7 +116,51 @@ def _handle_tools_list(msg_id: int | str | None) -> None:
                             },
                             "required": ["file_path"],
                         },
-                    }
+                    },
+                    {
+                        "name": "analyze_pdf",
+                        "description": (
+                            "Quick PDF triage — classify type and audit page quality "
+                            "without full extraction. Returns page count, type detection, "
+                            "per-page quality breakdown, and estimated extraction difficulty. "
+                            "Much cheaper than convert_pdf for initial assessment."
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "file_path": {
+                                    "type": "string",
+                                    "description": "Absolute path to the PDF file",
+                                },
+                            },
+                            "required": ["file_path"],
+                        },
+                    },
+                    {
+                        "name": "batch_convert",
+                        "description": (
+                            "Convert all PDFs in a directory to Markdown. "
+                            "Returns a summary with per-file results."
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "directory": {
+                                    "type": "string",
+                                    "description": "Absolute path to directory containing PDFs",
+                                },
+                                "quality": {
+                                    "type": "string",
+                                    "description": (
+                                        "Quality preset: fast, standard (default), high"
+                                    ),
+                                    "enum": ["fast", "standard", "high"],
+                                    "default": "standard",
+                                },
+                            },
+                            "required": ["directory"],
+                        },
+                    },
                 ]
             },
         }
@@ -121,7 +171,13 @@ def _handle_tools_call(msg_id: int | str | None, params: dict) -> None:
     tool_name = params.get("name", "")
     arguments = params.get("arguments", {})
 
-    if tool_name != "convert_pdf":
+    if tool_name == "convert_pdf":
+        _handle_convert_pdf(msg_id, arguments)
+    elif tool_name == "analyze_pdf":
+        _handle_analyze_pdf(msg_id, arguments)
+    elif tool_name == "batch_convert":
+        _handle_batch_convert(msg_id, arguments)
+    else:
         _write_message(
             {
                 "jsonrpc": "2.0",
@@ -129,8 +185,9 @@ def _handle_tools_call(msg_id: int | str | None, params: dict) -> None:
                 "error": {"code": -32602, "message": f"Unknown tool: {tool_name}"},
             }
         )
-        return
 
+
+def _handle_convert_pdf(msg_id: int | str | None, arguments: dict) -> None:
     file_path = arguments.get("file_path", "")
     fmt = arguments.get("format", "markdown")
     quality = arguments.get("quality", "standard")
@@ -182,12 +239,204 @@ def _handle_tools_call(msg_id: int | str | None, params: dict) -> None:
             }
         )
     except Exception as e:
+        error_code = getattr(e, "code", "UNKNOWN_ERROR")
         _write_message(
             {
                 "jsonrpc": "2.0",
                 "id": msg_id,
                 "result": {
-                    "content": [{"type": "text", "text": f"Error converting PDF: {e}"}],
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error converting PDF: {e}\nError code: {error_code}",
+                        }
+                    ],
+                    "isError": True,
+                },
+            }
+        )
+
+
+def _handle_analyze_pdf(msg_id: int | str | None, arguments: dict) -> None:
+    """Quick PDF triage — classify + audit without full extraction."""
+    file_path = arguments.get("file_path", "")
+
+    if not file_path:
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32602, "message": "file_path is required"},
+            }
+        )
+        return
+
+    try:
+        from pdfmux.audit import audit_document
+        from pdfmux.detect import classify
+
+        classification = classify(file_path)
+        audit = audit_document(file_path)
+
+        # Build type detection summary
+        types = []
+        if classification.is_digital:
+            types.append("digital")
+        if classification.is_scanned:
+            types.append("scanned")
+        if classification.is_mixed:
+            types.append("mixed")
+        if classification.is_graphical:
+            types.append("graphical")
+        if classification.has_tables:
+            types.append("tables")
+
+        # Per-page breakdown
+        pages_info = []
+        for pa in audit.pages:
+            pages_info.append(
+                {
+                    "page": pa.page_num + 1,
+                    "quality": pa.quality,
+                    "chars": pa.text_len,
+                    "images": pa.image_count,
+                    "reason": pa.reason,
+                }
+            )
+
+        analysis = {
+            "file": str(file_path),
+            "page_count": classification.page_count,
+            "detected_types": types,
+            "detection_confidence": round(classification.confidence, 3),
+            "needs_ocr": audit.needs_ocr,
+            "good_pages": len(audit.good_pages),
+            "bad_pages": len(audit.bad_pages),
+            "empty_pages": len(audit.empty_pages),
+            "pages": pages_info,
+        }
+
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {"content": [{"type": "text", "text": json.dumps(analysis, indent=2)}]},
+            }
+        )
+    except Exception as e:
+        error_code = getattr(e, "code", "UNKNOWN_ERROR")
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error analyzing PDF: {e}\nError code: {error_code}",
+                        }
+                    ],
+                    "isError": True,
+                },
+            }
+        )
+
+
+def _handle_batch_convert(msg_id: int | str | None, arguments: dict) -> None:
+    """Convert all PDFs in a directory."""
+    directory = arguments.get("directory", "")
+    quality = arguments.get("quality", "standard")
+
+    if not directory:
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32602, "message": "directory is required"},
+            }
+        )
+        return
+
+    try:
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
+            _write_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": msg_id,
+                    "error": {
+                        "code": -32602,
+                        "message": f"Not a directory: {directory}",
+                    },
+                }
+            )
+            return
+
+        pdfs = list(dir_path.glob("*.pdf")) + list(dir_path.glob("*.PDF"))
+        if not pdfs:
+            _write_message(
+                {
+                    "jsonrpc": "2.0",
+                    "id": msg_id,
+                    "result": {
+                        "content": [{"type": "text", "text": f"No PDF files found in {directory}"}]
+                    },
+                }
+            )
+            return
+
+        from pdfmux.pipeline import process_batch
+
+        results = []
+        for path, result_or_error in process_batch(pdfs, output_format="markdown", quality=quality):
+            if isinstance(result_or_error, Exception):
+                results.append(
+                    {
+                        "file": path.name,
+                        "status": "error",
+                        "error": str(result_or_error),
+                    }
+                )
+            else:
+                results.append(
+                    {
+                        "file": path.name,
+                        "status": "success",
+                        "pages": result_or_error.page_count,
+                        "confidence": round(result_or_error.confidence, 3),
+                        "extractor": result_or_error.extractor_used,
+                        "chars": len(result_or_error.text),
+                    }
+                )
+
+        summary = {
+            "directory": str(directory),
+            "total_files": len(pdfs),
+            "success": sum(1 for r in results if r["status"] == "success"),
+            "failed": sum(1 for r in results if r["status"] == "error"),
+            "results": results,
+        }
+
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {"content": [{"type": "text", "text": json.dumps(summary, indent=2)}]},
+            }
+        )
+    except Exception as e:
+        error_code = getattr(e, "code", "UNKNOWN_ERROR")
+        _write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error in batch convert: {e}\nError code: {error_code}",
+                        }
+                    ],
                     "isError": True,
                 },
             }
