@@ -30,7 +30,7 @@ finally:
     _sys.stdout = _orig
 del _orig, _io
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 __all__ = [
     # Public API
     "extract_text",
@@ -50,6 +50,7 @@ __all__ = [
     "ExtractorNotAvailable",
     "FormatError",
     "AuditError",
+    "OCRTimeoutError",
 ]
 
 # Re-export types for convenience: import pdfmux; pdfmux.PageResult(...)
@@ -59,6 +60,7 @@ from pdfmux.errors import (  # noqa: E402, F401
     ExtractorNotAvailable,
     FileError,
     FormatError,
+    OCRTimeoutError,
     PdfmuxError,
 )
 from pdfmux.types import (  # noqa: E402, F401

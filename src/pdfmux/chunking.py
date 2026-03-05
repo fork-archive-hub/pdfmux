@@ -32,6 +32,9 @@ def estimate_tokens(text: str) -> int:
 def chunk_by_sections(
     text: str,
     confidence: float = 1.0,
+    *,
+    extractor: str = "",
+    ocr_applied: bool = False,
 ) -> list[Chunk]:
     """Split text into section-aware chunks at heading boundaries.
 
@@ -44,6 +47,8 @@ def chunk_by_sections(
     Args:
         text: Post-processed Markdown text (with page separators).
         confidence: Document-level confidence score to inherit.
+        extractor: Name of the extractor that produced the text.
+        ocr_applied: Whether OCR was used on any page.
 
     Returns:
         List of Chunk objects in document order.
@@ -55,9 +60,11 @@ def chunk_by_sections(
     sections = _find_sections(text)
 
     if sections:
-        return _chunks_from_sections(text, sections, page_offsets, confidence)
+        return _chunks_from_sections(
+            text, sections, page_offsets, confidence, extractor, ocr_applied
+        )
     else:
-        return _chunks_from_pages(text, page_offsets, confidence)
+        return _chunks_from_pages(text, page_offsets, confidence, extractor, ocr_applied)
 
 
 def _build_page_offsets(text: str) -> list[tuple[int, int]]:
@@ -102,6 +109,8 @@ def _chunks_from_sections(
     sections: list[tuple[str, int, int]],
     page_offsets: list[tuple[int, int]],
     confidence: float,
+    extractor: str = "",
+    ocr_applied: bool = False,
 ) -> list[Chunk]:
     """Create chunks from heading-based sections."""
     chunks = []
@@ -121,6 +130,8 @@ def _chunks_from_sections(
                 page_end=page_end,
                 tokens=estimate_tokens(section_text),
                 confidence=confidence,
+                extractor=extractor,
+                ocr_applied=ocr_applied,
             )
         )
     return chunks
@@ -130,6 +141,8 @@ def _chunks_from_pages(
     text: str,
     page_offsets: list[tuple[int, int]],
     confidence: float,
+    extractor: str = "",
+    ocr_applied: bool = False,
 ) -> list[Chunk]:
     """Fallback: one chunk per page when no headings exist."""
     pages = text.split(PAGE_SEPARATOR)
@@ -147,6 +160,8 @@ def _chunks_from_pages(
                 page_end=page_num,
                 tokens=estimate_tokens(page_text),
                 confidence=confidence,
+                extractor=extractor,
+                ocr_applied=ocr_applied,
             )
         )
     return chunks

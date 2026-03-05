@@ -520,6 +520,8 @@ def _format_output(
             text=text,
             source=str(source_path),
             confidence=confidence,
+            extractor=extractor,
+            ocr_applied=bool(ocr_pages),
         )
 
     if output_format == OutputFormat.CSV:
