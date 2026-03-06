@@ -293,19 +293,20 @@ Sections appear in this order on the page:
 
 ```
 1. Nav
-2. Hero (title, subtitle, CTAs)
+2. Hero (title, subtitle, feature bullets, CTAs)
 3. Install box
-4. Social proof bar
-5. The problem (why pdfmux exists)
-6. How it works (pipeline overview)
-7. Python API
-8. Features grid
-9. CLI
-10. Extractors table
-11. MCP server
-12. Framework integrations
-13. Optional extras
-14. Footer
+4. The problem (before/after comparison)
+5. How it works (pipeline overview)
+6. Python API
+7. Built for LLM pipelines (output details)
+8. CLI
+9. Extractors table
+10. Accuracy tables (per-document-type + aggregate)
+11. Also (compact feature list)
+12. MCP server
+13. Framework integrations
+14. Optional extras
+15. Footer
 ```
 
 **Rule**: "The problem" and "How it works" must appear before code examples. Explain WHY before showing HOW.
