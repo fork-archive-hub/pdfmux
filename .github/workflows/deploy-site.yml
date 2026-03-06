@@ -3,7 +3,7 @@ name: Deploy website
 on:
   push:
     branches: [main]
-    paths: [site/**]
+    paths: [site/**, blog/**]
   workflow_dispatch:
 
 permissions:
@@ -23,9 +23,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.157.0"
+          extended: true
+
+      - name: Build blog
+        run: hugo --minify --source blog
+
+      - name: Merge site + blog
+        run: |
+          mkdir -p _site
+          cp -r site/* _site/
+          cp -r blog/public _site/blog
+
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
