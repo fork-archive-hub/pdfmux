@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>&ldquo;67% Confidence&rdquo; &mdash; What Happens When Your PDF Extractor Actually Tells You It&rsquo;s Failing &mdash; pdfmux</title>
+  <meta name="description" content="pdfmux is an open-source Python PDF extraction library with confidence scoring, smart routing, and MCP server support. We tested it on 76 real-world pages — here's what happened.">
+  <meta property="og:title" content="&quot;67% Confidence&quot; — What Happens When Your PDF Extractor Actually Tells You It's Failing">
+  <meta property="og:description" content="We tested pdfmux on 4 real-world PDFs — salary slips, a legal contract, a scanned bank form, and a 47-page pitch deck with 24 invisible pages.">
+  <meta property="og:url" content="https://pdfmux.com/blog/pdf-extraction-python-confidence-scoring">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="&quot;67% Confidence&quot; — What Happens When Your PDF Extractor Tells You It's Failing">
+  <meta name="twitter:description" content="We tested pdfmux on 76 real-world pages. A pitch deck had 24 invisible pages. Confidence scoring caught every one.">
+  <meta name="twitter:creator" content="@nameetp">
+  <link rel="canonical" href="https://pdfmux.com/blog/pdf-extraction-python-confidence-scoring">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x26A1;</text></svg>">
+
+  <!-- JSON-LD BlogPosting schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "\"67% Confidence\" — What Happens When Your PDF Extractor Actually Tells You It's Failing",
+    "description": "We tested pdfmux on 4 real-world PDFs — salary slips, a legal contract, a scanned bank form, and a 47-page pitch deck with 24 invisible pages.",
+    "datePublished": "2026-03-06",
+    "author": { "@type": "Organization", "name": "pdfmux", "url": "https://pdfmux.com" },
+    "publisher": { "@type": "Organization", "name": "pdfmux", "url": "https://pdfmux.com" },
+    "mainEntityOfPage": "https://pdfmux.com/blog/pdf-extraction-python-confidence-scoring",
+    "keywords": ["pdf extraction python", "pdf confidence scoring", "self-healing pdf extraction", "mcp server pdf", "ai agent pdf extraction", "best pdf parser for rag"]
+  }
+  </script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a1a;
+      --dim: #6b6b6b;
+      --muted: #999999;
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --code-bg: #fafafa;
+      --border: #e5e5e5;
+      --green: #059669;
+      --green-light: #ecfdf5;
+      --font: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f0f0f;
+      --fg: #e5e5e5;
+      --dim: #a0a0a0;
+      --muted: #666666;
+      --accent: #818cf8;
+      --accent-light: #1e1b4b;
+      --code-bg: #1a1a1a;
+      --border: #2a2a2a;
+      --green: #4ade80;
+      --green-light: #052e16;
+    }
+
+    body { font-family: var(--font); background: var(--bg); color: var(--fg); line-height: 1.7; font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+    nav { max-width: 720px; margin: 0 auto; padding: 24px 28px; display: flex; justify-content: space-between; align-items: center; }
+    nav .logo { font-size: 17px; font-weight: 700; color: var(--fg); text-decoration: none; letter-spacing: -0.3px; }
+    nav .logo span { color: var(--accent); }
+    nav .nav-links { display: flex; gap: 16px; align-items: center; }
+    nav .nav-links a { font-size: 14px; color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    nav .nav-links a:hover { color: var(--fg); }
+
+    article { max-width: 720px; margin: 0 auto; padding: 40px 28px 80px; }
+    article .post-meta { font-size: 14px; color: var(--muted); margin-bottom: 32px; display: flex; gap: 16px; align-items: center; }
+    article .post-meta .tag { background: var(--accent-light); color: var(--accent); font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+    article h1 { font-size: 32px; font-weight: 700; line-height: 1.25; margin-bottom: 16px; letter-spacing: -0.5px; }
+    article h2 { font-size: 22px; font-weight: 700; margin: 48px 0 16px; letter-spacing: -0.3px; padding-top: 16px; border-top: 1px solid var(--border); }
+    article h3 { font-size: 17px; font-weight: 600; margin: 32px 0 12px; }
+
+    article p { margin-bottom: 16px; }
+    article strong { font-weight: 600; }
+    article em { font-style: italic; }
+    article a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    article a:hover { opacity: 0.8; }
+
+    article ul, article ol { margin: 0 0 16px 24px; }
+    article li { margin-bottom: 6px; }
+
+    article .bluf { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0; font-size: 15px; line-height: 1.65; }
+    article .bluf strong { color: var(--accent); }
+
+    article .skip-links { font-size: 14px; color: var(--muted); font-style: italic; margin-bottom: 24px; }
+    article .skip-links a { color: var(--dim); }
+
+    article pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 16px 0 24px; font-family: var(--mono); font-size: 14px; line-height: 1.6; }
+    article code { font-family: var(--mono); font-size: 14px; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
+    article pre code { background: none; padding: 0; }
+
+    article table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; }
+    article th, article td { padding: 10px 14px; border: 1px solid var(--border); text-align: left; }
+    article th { background: var(--code-bg); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    article .test-header { display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; color: var(--dim); margin-bottom: 16px; }
+    article .test-header strong { color: var(--fg); font-weight: 600; }
+
+    article .cta-box { background: var(--green-light); border: 1px solid var(--green); border-radius: 8px; padding: 20px 24px; margin: 32px 0; }
+    article .cta-box strong { color: var(--green); }
+    article .cta-box pre { background: var(--bg); margin: 12px 0 0; }
+
+    article .callout { background: var(--accent-light); border-radius: 8px; padding: 14px 20px; margin: 16px 0; font-size: 15px; }
+
+    article hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    footer { max-width: 720px; margin: 0 auto; padding: 24px 28px 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+    footer a { color: var(--dim); text-decoration: none; }
+    footer a:hover { color: var(--fg); }
+    footer .footer-links { display: flex; gap: 20px; }
+
+    @media (max-width: 640px) {
+      article h1 { font-size: 26px; }
+      article h2 { font-size: 20px; }
+      nav { padding: 20px 20px; }
+      article { padding: 32px 20px 60px; }
+      footer { flex-direction: column; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="logo" href="/">pdf<span>mux</span></a>
+    <div class="nav-links">
+      <a href="/blog/">blog</a>
+      <a href="https://github.com/NameetP/pdfmux">docs</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+    </div>
+  </nav>
+
+  <article>
+    <h1>&ldquo;67% Confidence&rdquo; &mdash; What Happens When Your PDF Extractor Actually Tells You It&rsquo;s Failing</h1>
+
+    <div class="post-meta">
+      <span>March 6, 2026</span>
+      <span>&middot;</span>
+      <span>8 min read</span>
+      <span class="tag">benchmark</span>
+      <span class="tag">real-world test</span>
+    </div>
+
+    <p>Most PDF extraction tools demo well on clean, digital documents. A research paper. A nicely typeset invoice. The kind of PDF that every tool handles fine.</p>
+
+    <p>If you&rsquo;re building a RAG pipeline and need reliable PDF extraction in Python, the real test isn&rsquo;t whether a tool handles clean documents &mdash; it&rsquo;s what happens when extraction partially fails.</p>
+
+    <p>We threw 4 real-world PDFs at pdfmux &mdash; a salary payslip with nested tables, a 12-page legal contract, a scanned bank form in two languages, and a 47-page startup pitch deck where half the text is baked into images. Here&rsquo;s what we found.</p>
+
+    <div class="bluf">
+      <strong>The short version:</strong> pdfmux extracted all 4 PDFs with zero configuration. The pitch deck initially came back at 67% confidence with 24 empty pages. That confidence score &mdash; a feature no other open-source PDF tool offers &mdash; told us exactly which pages needed OCR. Switching to <code>high</code> quality recovered all 47 pages. 76 total pages processed in under 30 seconds.
+    </div>
+
+    <p class="skip-links">Skip to <a href="#scanned-bank-form">the scanned bank form</a> for the first failure case. Skip to <a href="#pitch-deck">the pitch deck</a> for the real stress test.</p>
+
+    <h2>The Test Setup</h2>
+
+    <p>We installed pdfmux v1.0.1 from PyPI and configured it as an MCP server inside Claude Code &mdash; meaning an AI agent could call it directly as a tool, with zero human intervention.</p>
+
+    <pre><code>pip install pdfmux</code></pre>
+
+    <p>Three tools became available:</p>
+    <ul>
+      <li><strong><code>convert_pdf</code></strong> &mdash; extract text from any PDF, auto-detecting the best method</li>
+      <li><strong><code>analyze_pdf</code></strong> &mdash; quick triage without full extraction (page count, type, per-page quality)</li>
+      <li><strong><code>batch_convert</code></strong> &mdash; process an entire directory of PDFs</li>
+    </ul>
+
+    <p>No configuration files. No API keys. No model selection. Just a file path.</p>
+
+    <h2>The Easy Wins: Salary Slips and Legal Contracts</h2>
+
+    <p>The first two PDFs &mdash; a 5-page set of salary payslips with nested tables and a 12-page convertible note with deep clause numbering &mdash; extracted at 100% confidence in under 1 second each on standard quality.</p>
+
+    <p>Tables preserved their column alignment:</p>
+
+    <pre><code>| Earnings       | Amount    | Deductions  | Amount |
+|----------------|-----------|-------------|--------|
+| Basic          | 53,000.00 | Advance     | -      |
+| Allowances     | -         | Leave       | -      |
+| Transportation | -         | Loan        | -      |
+| Total Addition | 53,000.00 | Total Ded.  | -      |
+|                |           | NET Salary  | 53,000 |</code></pre>
+
+    <p>Legal clause numbering (1 &rarr; 1.1 &rarr; 1.1.1) came through intact. Defined terms kept their bold formatting. Signature blocks, currency figures, and document timestamps all extracted cleanly.</p>
+
+    <div class="callout">
+      <strong>Why this matters for RAG:</strong> If your extractor loses clause numbering or flattens defined terms, an AI agent referencing &ldquo;Clause 4.2.2&rdquo; will hallucinate. If tables become paragraphs, downstream parsing breaks. pdfmux preserved the full hierarchy and structure.
+    </div>
+
+    <p>These aren&rsquo;t the interesting cases. Every halfway-decent PDF extractor handles digital, text-layer PDFs. The question is what happens when they don&rsquo;t.</p>
+
+    <h2 id="scanned-bank-form">The First Failure: A Scanned Bank Form in Two Languages</h2>
+
+    <div class="test-header">
+      <span><strong>PDF type:</strong> Scanned/image-based, mixed language (English + Arabic)</span>
+      <span><strong>Quality:</strong> Standard &rarr; failed &rarr; High &rarr; recovered</span>
+    </div>
+
+    <p>A 12-page credit card application form from a major international bank. The document was scanned &mdash; meaning the text exists only as pixels, not as a text layer.</p>
+
+    <h3>Standard quality result: 0 extractable text across all 12 pages.</h3>
+
+    <p>This is actually the <em>correct</em> behavior. pdfmux detected the PDF was image-based and honestly reported:</p>
+
+    <pre><code>Per-page quality: all 12 pages flagged as "empty"
+Reason: "no text (0 chars) with N images"</code></pre>
+
+    <p>Rather than returning garbage, it told us exactly what was wrong. This is pdfmux&rsquo;s <strong>confidence scoring</strong> &mdash; the feature that no other open-source PDF tool offers. Most extractors return an empty string here and your downstream code has no idea anything went wrong.</p>
+
+    <h3>High quality result: Full form extracted.</h3>
+
+    <p>Switching to <code>high</code> quality activated OCR (via Tesseract/RapidOCR). The English pages (1-7) came through cleanly:</p>
+
+    <pre><code>Credit Card Application Form (UAE)
+
+Card types: Global Private Banking, Black, Premier, Advance,
+Cash+, Max Rewards, Platinum Select, Cash Back, Zero
+
+Auto Debit Payment Instruction: 5% / 100% / Other
+
+Lifestyle Expenses:
+- Housing (Rent, Property service charges): AED ____
+- Travel: AED ____
+- Insurance: AED ____</code></pre>
+
+    <p>Form fields, checkboxes, tables, terms and conditions &mdash; all recovered from a scanned image. The Arabic pages (8-12) extracted with OCR artifacts &mdash; a known limitation of Tesseract with RTL scripts, but still usable for classification and search indexing.</p>
+
+    <div class="callout">
+      <strong>Why this matters:</strong> Most PDF pipelines silently fail on scanned documents. They return an empty string and your downstream code has no idea anything went wrong. pdfmux&rsquo;s confidence scoring catches this <em>before</em> it corrupts your vector database.
+    </div>
+
+    <h2 id="pitch-deck">The Real Stress Test: A 47-Page Pitch Deck With 24 Invisible Pages</h2>
+
+    <div class="test-header">
+      <span><strong>PDF type:</strong> Digital + graphical (design-heavy, text-as-images)</span>
+      <span><strong>Quality:</strong> Standard &rarr; partial &rarr; High &rarr; full recovery</span>
+    </div>
+
+    <p>This was the test that matters. A 47-page startup pitch deck &mdash; the kind exported from Canva, Figma, or Google Slides &mdash; where designers render text as images for pixel-perfect typography. If you&rsquo;ve ever tried to extract text from a pitch deck, you know the pain.</p>
+
+    <h3>Standard quality: 67% confidence. 24 empty pages.</h3>
+
+    <p>pdfmux&rsquo;s <code>analyze_pdf</code> triage told us the problem immediately:</p>
+
+    <pre><code>{
+  "page_count": 47,
+  "detected_types": ["digital", "graphical", "tables"],
+  "detection_confidence": 0.915,
+  "needs_ocr": true,
+  "good_pages": 6,
+  "bad_pages": 17,
+  "empty_pages": 24
+}</code></pre>
+
+    <p>Only 6 of 47 pages had extractable text. The rest &mdash; cover slides, team pages, market charts, product screenshots &mdash; were images. Standard extraction correctly extracted what it could and flagged the rest.</p>
+
+    <p>For comparison: running PyMuPDF directly on this deck returns the same 23 text-layer pages &mdash; but empty strings for the other 24, with no warning, no confidence score, and no automatic fallback. You discover the gap when a user asks your chatbot about the financial projections on slide 38 and gets nothing.</p>
+
+    <h3>High quality: All 47 pages recovered.</h3>
+
+    <p>Switching to <code>high</code> activated OCR on every page that the standard pass flagged as empty or bad:</p>
+
+    <p><strong>Founder bio (previously invisible):</strong></p>
+    <pre><code>Founder, Category Creator &amp; Serial Entrepreneur
+Board Member: Paytm Payments Bank, Unicommerce</code></pre>
+
+    <p><strong>Financial projections (previously invisible):</strong></p>
+    <pre><code>5 Year Projections
+AUM: $45M &rarr; $130M &rarr; $250M &rarr; $443M (120% 5yr CAGR)
+Revenue: $2M &rarr; $9M &rarr; $19M &rarr; $27M &rarr; $51M (180% 5yr CAGR)</code></pre>
+
+    <p>Product screens, loan case studies, investor logos, competitive tables &mdash; all recovered from images. Even the 9,509-character legal disclaimer on page 46 was perfectly extracted.</p>
+
+    <h3>The before/after in numbers:</h3>
+
+    <table>
+      <thead>
+        <tr><th>Metric</th><th>Standard</th><th>High</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pages with text</td><td>23 of 47</td><td><strong>47 of 47</strong></td></tr>
+        <tr><td>Empty pages</td><td>24</td><td><strong>0</strong></td></tr>
+        <tr><td>Total characters extracted</td><td>~3,200</td><td><strong>~25,000+</strong></td></tr>
+        <tr><td>Key data recovered</td><td>Partial</td><td><strong>Complete</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="cta-box">
+      <strong>Try it on your own PDFs:</strong>
+      <pre><code>pip install pdfmux
+pdfmux your-messy-deck.pdf -q high</code></pre>
+      <p>The pitch deck test above processed all 47 pages in 12 seconds.</p>
+    </div>
+
+    <h2>Why pdfmux Works on Real-World PDFs</h2>
+
+    <h3>Self-Healing PDF Extraction Through Smart Routing</h3>
+
+    <p>pdfmux doesn&rsquo;t use one extraction method for everything. It runs a per-page classifier that checks text-layer density, embedded image count, and font metadata to categorize each page as digital, scanned, mixed, or graphical &mdash; then routes to the optimal extractor for that page type.</p>
+
+    <p>For the salary slips, it used the fast digital path (PyMuPDF). For the scanned bank form, it activated OCR. For the pitch deck, it used a hybrid approach: fast extraction for text-layer pages, OCR for image pages.</p>
+
+    <p>This is why it&rsquo;s called pdf<strong>mux</strong> &mdash; it multiplexes between extraction strategies. And it&rsquo;s why pdfmux doesn&rsquo;t compete with PyMuPDF, Docling, or Marker &mdash; it <em>uses</em> them, routing each page to whichever tool handles it best.</p>
+
+    <h3>PDF Confidence Scoring: The Feature No Other Open-Source Tool Has</h3>
+
+    <p>Every extraction returns a confidence score. When the pitch deck came back at 67%, that wasn&rsquo;t a failure &mdash; it was a signal. &ldquo;I got what I could, but 24 pages need a different approach.&rdquo;</p>
+
+    <p>The confidence-then-retry pattern is what makes self-healing extraction possible:</p>
+
+    <pre><code>from pdfmux import process
+
+result = process("pitch-deck.pdf")
+print(f"Confidence: {result.confidence}")   # 0.67
+print(f"Empty pages: {len(result.empty_pages)}")  # 24 of 47
+
+# Confidence score tells you when to retry
+if result.confidence &lt; 0.8:
+    result = process("pitch-deck.pdf", quality="high")
+    print(f"Confidence: {result.confidence}")   # 0.95
+    print(f"Empty pages: {len(result.empty_pages)}")  # 0 of 47</code></pre>
+
+    <p>Eight lines. That&rsquo;s the entire pdfmux story.</p>
+
+    <h3>Quality Presets as a Dial</h3>
+
+    <p>Instead of configuring OCR engines, model endpoints, and extraction parameters, pdfmux gives you three presets:</p>
+
+    <ul>
+      <li><strong><code>fast</code></strong> &mdash; digital text only, milliseconds per page</li>
+      <li><strong><code>standard</code></strong> &mdash; smart routing with fallbacks (default)</li>
+      <li><strong><code>high</code></strong> &mdash; OCR + all available extractors, maximum accuracy</li>
+    </ul>
+
+    <p>One parameter. That&rsquo;s it.</p>
+
+    <h3>MCP Server for AI Agent PDF Extraction</h3>
+
+    <p>All four tests were run through pdfmux&rsquo;s MCP server &mdash; meaning an AI agent called the tool directly, received structured results, and made decisions based on confidence scores.</p>
+
+    <p>The agent saw the pitch deck&rsquo;s 67% confidence at standard quality and autonomously decided to retry at high quality. No human in the loop.</p>
+
+    <pre><code>{
+  "mcpServers": {
+    "pdfmux": {
+      "command": "pdfmux",
+      "args": ["serve"]
+    }
+  }
+}</code></pre>
+
+    <p>Three tools. Zero configuration. Your AI agent can now read any PDF.</p>
+
+    <h2>Try It</h2>
+
+    <pre><code>pip install pdfmux
+
+# Extract a PDF
+pdfmux document.pdf
+
+# Quick triage without full extraction
+pdfmux analyze document.pdf
+
+# Maximum accuracy
+pdfmux document.pdf -q high
+
+# Add to your AI agent
+pdfmux serve</code></pre>
+
+    <p>The entire test &mdash; 4 PDFs, 76 total pages, multiple quality levels &mdash; took under 30 seconds.</p>
+
+    <p><strong>Your PDFs are messier than your test suite. pdfmux is built for that.</strong></p>
+
+    <h2>The Honest Limitations</h2>
+
+    <ol>
+      <li><strong>Arabic OCR</strong> &mdash; Tesseract&rsquo;s Arabic model produced noisy output on the scanned bank form&rsquo;s RTL pages. Usable for search indexing, not for direct display.</li>
+      <li><strong>Design-heavy slides at standard quality</strong> &mdash; If text is rendered as an image, standard quality can&rsquo;t extract it. You need <code>high</code>. This is by design &mdash; OCR is slower and you shouldn&rsquo;t pay that cost on every PDF.</li>
+      <li><strong>Handwritten text</strong> &mdash; Not tested here, but OCR-based extraction of handwriting remains an industry-wide challenge.</li>
+    </ol>
+
+    <p>Arabic OCR and vision-based extraction are on the roadmap for v1.1. If you hit other edge cases, <a href="https://github.com/NameetP/pdfmux/issues">file an issue</a>.</p>
+
+    <hr>
+
+    <p><em>pdfmux is open source under MIT license. <a href="https://github.com/NameetP/pdfmux">GitHub</a> | <a href="https://pypi.org/project/pdfmux/">PyPI</a> | <a href="https://pdfmux.com">Documentation</a></em></p>
+
+  </article>
+
+  <footer>
+    <div>MIT &middot; <a href="https://github.com/NameetP">Nameet Potnis</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></div>
+    <div class="footer-links">
+      <a href="https://github.com/NameetP/pdfmux">github</a>
+      <a href="https://pypi.org/project/pdfmux/">pypi</a>
+      <a href="https://github.com/NameetP/pdfmux/issues">issues</a>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      var saved = localStorage.getItem('theme');
+      var preferred = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', preferred);
+    })();
+  </script>
+
+</body>
+</html>
