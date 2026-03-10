@@ -132,7 +132,7 @@ This intelligence feeds into pdfmux's routing decisions. Digital pages go to the
 
 ## What does the output actually look like?
 
-Here's a snippet from the Tesla 10-K extraction:
+Here's a snippet from the Supreme Court opinion extraction:
 
 ```markdown
 # **SUPREME COURT OF THE UNITED STATES**
