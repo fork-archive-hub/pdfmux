@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this feature solve? What are you trying to do that you can't today?
+      placeholder: "I'm trying to extract PDFs with complex multi-column layouts but..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you've considered or workarounds you're using?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Extraction quality
+        - New output format
+        - New extractor backend
+        - CLI
+        - Python API
+        - MCP server
+        - Performance
+        - Documentation
+        - Other
+    validations:
+      required: true

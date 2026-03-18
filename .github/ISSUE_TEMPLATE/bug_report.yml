@@ -1,0 +1,68 @@
+name: Bug Report
+description: Report a bug or incorrect extraction result
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "pdfmux extracted garbled text from page 3 of my PDF..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the issue.
+      value: |
+        1. `pip install pdfmux`
+        2. `pdfmux <file>`
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Environment (`pdfmux doctor`)
+      description: Paste the output of `pdfmux doctor`
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pdfmux version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Docker
+    validations:
+      required: true
+  - type: textarea
+    id: pdf
+    attributes:
+      label: Sample PDF
+      description: If possible, attach or link a PDF that reproduces the issue. If the PDF is confidential, describe it (page count, type — scanned/digital/mixed, any tables).
