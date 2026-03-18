@@ -14,11 +14,27 @@ PDF ──→ pdfmux ──→ Markdown / JSON
          ├─ fast extract every page
          ├─ audit each page (good / bad / empty)
          ├─ re-extract bad pages with OCR
+         ├─ detect headings via font-size analysis
          ├─ merge → clean → confidence score
          └─ extract tables, key-values, normalize dates/amounts
 ```
 
 Most PDF extractors run once and hope for the best. pdfmux extracts, audits every page, and re-extracts the ones that came out wrong — automatically.
+
+## Benchmark
+
+Tested on [opendataloader-bench](https://github.com/opendataloader/opendataloader-bench) (200 PDFs). NID = Normalized Inversion Distance (reading order accuracy).
+
+| Engine | Overall | Reading Order (NID) | Tables | Headings |
+|--------|---------|---------------------|--------|----------|
+| opendataloader hybrid | 0.909 | 0.935 | 0.928 | 0.828 |
+| docling | 0.877 | 0.899 | 0.887 | 0.802 |
+| marker | 0.861 | 0.890 | 0.808 | 0.796 |
+| **pdfmux** | **0.853** | **0.911** | 0.704 | 0.740 |
+| opendataloader local | 0.844 | 0.913 | 0.494 | 0.761 |
+| mineru | 0.831 | 0.857 | 0.873 | 0.743 |
+
+pdfmux ranks #2 in reading order across all engines tested — with zero AI/API calls in the default pipeline.
 
 ## Quick Start
 
@@ -77,7 +93,12 @@ Pass 2 — Selective OCR (only bad pages)
     ├─ "bad" page (some text): only use OCR if it got MORE text
     └─ "empty" page (no text): accept any OCR result >10 chars
 
-Pass 3 — Merge + score
+Pass 3 — Heading detection
+  ├─ Analyze font sizes per page via PyMuPDF spans
+  ├─ Identify heading levels from size clusters
+  └─ Inject markdown heading markers (# / ## / ###)
+
+Pass 4 — Merge + score
   ├─ Combine good pages + OCR'd pages in order
   ├─ Clean text (broken words, control chars, spacing)
   └─ Confidence score (honest — reflects actual quality)
@@ -419,7 +440,7 @@ Raises an error if no tables are found.
 
 ## Structured Extraction
 
-*New in v1.1.0.* Extract structured data from invoices, bank statements, and forms — no LLM, no cloud, no cost.
+*New in v1.1.0, improved in v1.2.0.* Extract structured data from invoices, bank statements, and forms — no LLM, no cloud, no cost.
 
 pdfmux auto-detects key-value pairs (colon-separated, whitespace-aligned, dot-leader patterns), extracts tables as typed JSON, and normalizes dates, amounts, and rates into clean values.
 
@@ -592,6 +613,8 @@ src/pdfmux/
 ├── kv_extract.py       # Key-value pair extraction (colon, whitespace, dot-leader)
 ├── normalize.py        # Date/amount/rate normalization (pure Python)
 ├── schema.py           # Schema-guided extraction (fuzzy matching, type coercion)
+├── headings.py         # Heading detection via font-size analysis
+├── table_fallback.py   # Fallback table extraction when Docling is unavailable
 ├── postprocess.py      # Text cleanup
 ├── mcp_server.py       # MCP server (stdio JSON-RPC) with path restrictions
 ├── cli.py              # Typer CLI (convert, analyze, serve, doctor, bench, version)
