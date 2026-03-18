@@ -8,6 +8,10 @@
 
 The only PDF extractor that checks its own work. #2 in reading order accuracy — with zero AI, zero API calls, zero GPU.
 
+<p align="center">
+  <img src="demo.svg" alt="pdfmux terminal demo" width="700" />
+</p>
+
 ```
 PDF ──→ pdfmux ──→ Markdown / JSON
          │
