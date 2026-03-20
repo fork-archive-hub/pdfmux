@@ -66,6 +66,16 @@ def _extract_tables_fast(
             if not cells or len(cells) < 2 or len(cells[0]) < 2:
                 continue
 
+            # Garbage filter: skip tables with <30% non-empty cells
+            # (PyMuPDF 1.27 find_tables() regression produces near-empty tables)
+            total_cells = sum(len(row) for row in cells)
+            filled_cells = sum(
+                1 for row in cells for c in row
+                if c and str(c).strip()
+            )
+            if total_cells > 0 and filled_cells / total_cells < 0.30:
+                continue
+
             headers = tuple(str(c).strip() if c else "" for c in cells[0])
             rows = tuple(
                 tuple(str(c).strip() if c else "" for c in row)

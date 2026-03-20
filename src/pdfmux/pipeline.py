@@ -288,8 +288,16 @@ def _route_and_extract(
         pages, name = _try_targeted_table_extraction(file_path, classification)
         return pages, name, []
 
-    # Standard → multi-pass
-    return _multipass_extract(file_path, classification)
+    # Standard → multi-pass + Docling table overlay
+    pages, name, ocr_pages = _multipass_extract(file_path, classification)
+
+    # Try Docling table overlay: extract ONLY tables from Docling
+    # and append to PyMuPDF text. Catches tables the classifier missed.
+    pages, overlay_applied = _overlay_docling_tables(file_path, pages)
+    if overlay_applied:
+        name += " + docling-tables"
+
+    return pages, name, ocr_pages
 
 
 def _try_table_extractor(file_path: Path) -> tuple[list[PageResult], str]:
@@ -421,6 +429,153 @@ def _identify_table_pages(file_path: Path) -> list[int]:
 
     doc.close()
     return table_pages
+
+
+# ---------------------------------------------------------------------------
+# Docling table overlay — merge Docling tables into PyMuPDF text
+# ---------------------------------------------------------------------------
+
+
+def _extract_table_blocks(text: str) -> list[str]:
+    """Extract markdown pipe-table blocks from text."""
+    lines = text.split("\n")
+    blocks: list[str] = []
+    current: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("|") and stripped.endswith("|"):
+            current.append(stripped)
+        else:
+            if len(current) >= 3:  # header + separator + data row
+                blocks.append("\n".join(current))
+            current = []
+
+    if len(current) >= 3:
+        blocks.append("\n".join(current))
+
+    return blocks
+
+
+def _is_toc_table(table_block: str) -> bool:
+    """Detect if a table is likely a Table of Contents (should not be injected).
+
+    TOC tables typically have 2-3 columns, 8+ rows, with page numbers in the
+    last column. Short data tables (<8 rows) are never classified as TOCs.
+    """
+    import re
+
+    lines = table_block.split("\n")
+    data_rows = [l for l in lines if not re.match(r"^\|[\s\-:|]+\|$", l.strip())]
+
+    # Short tables can't be TOCs — real TOCs have many chapters/sections
+    if len(data_rows) < 8:
+        return False
+
+    # Count columns and collect last-column values
+    # Strict page number: pure digits or pure roman numerals only
+    page_num_re = re.compile(r"^(\d{1,4}|[ivxlc]{1,6})$", re.IGNORECASE)
+    last_col_values: list[str] = []
+    max_cols = 0
+
+    for row in data_rows:
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        max_cols = max(max_cols, len(cells))
+        if cells:
+            last_col_values.append(cells[-1])
+
+    # Only check 2-3 column tables (data tables typically have 4+)
+    if max_cols > 3:
+        return False
+
+    if not last_col_values:
+        return False
+
+    # Check if last column is predominantly page numbers
+    page_num_count = sum(
+        1 for v in last_col_values
+        if page_num_re.match(v.strip())
+    )
+    return page_num_count / len(last_col_values) > 0.6
+
+
+def _overlay_docling_tables(
+    file_path: Path,
+    pages: list[PageResult],
+) -> tuple[list[PageResult], bool]:
+    """Try Docling on pages without tables; merge any tables found.
+
+    Runs Docling extraction and extracts ONLY markdown table blocks.
+    Appends those to PyMuPDF text for pages where PyMuPDF found no tables.
+    Deduplicates: skips tables whose content already appears in the text
+    (e.g. TOCs that Docling formats as tables).
+
+    Returns:
+        (enhanced_pages, overlay_was_applied)
+    """
+    try:
+        from pdfmux.extractors.tables import TableExtractor
+
+        ext = TableExtractor()
+        if not ext.available():
+            return pages, False
+    except Exception:
+        return pages, False
+
+    # Find pages that have no tables in current text
+    pages_without_tables: list[int] = []
+    for p in pages:
+        if not _extract_table_blocks(p.text):
+            pages_without_tables.append(p.page_num)
+
+    if not pages_without_tables:
+        return pages, False
+
+    # Run Docling on pages without tables
+    try:
+        docling_results = list(ext.extract_pages(file_path, pages_without_tables))
+    except Exception:
+        logger.debug("Docling table overlay failed, continuing without")
+        return pages, False
+
+    # Build lookup: page_num → list of data table blocks from Docling
+    # Filter out TOC-like tables (chapter lists with page numbers)
+    docling_tables: dict[int, list[str]] = {}
+    for dp in docling_results:
+        tables = _extract_table_blocks(dp.text)
+        if not tables:
+            continue
+
+        data_tables = [t for t in tables if not _is_toc_table(t)]
+        if data_tables:
+            docling_tables[dp.page_num] = data_tables
+
+    if not docling_tables:
+        return pages, False
+
+    # Merge: append Docling tables to PyMuPDF text
+    enhanced: list[PageResult] = []
+    for p in pages:
+        if p.page_num in docling_tables:
+            table_md = "\n\n".join(docling_tables[p.page_num])
+            enhanced.append(
+                PageResult(
+                    page_num=p.page_num,
+                    text=p.text.rstrip() + "\n\n" + table_md,
+                    confidence=p.confidence,
+                    quality=p.quality,
+                    extractor=p.extractor,
+                    image_count=p.image_count,
+                    ocr_applied=p.ocr_applied,
+                    tables=p.tables,
+                )
+            )
+        else:
+            enhanced.append(p)
+
+    n_enhanced = len(docling_tables)
+    logger.info(f"Docling table overlay: added tables to {n_enhanced} pages")
+    return enhanced, True
 
 
 # ---------------------------------------------------------------------------

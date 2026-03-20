@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/pypi/dm/pdfmux)](https://pypi.org/project/pdfmux/)
 
-The only PDF extractor that checks its own work. #2 in reading order accuracy — with zero AI, zero API calls, zero GPU.
+The only PDF extractor that checks its own work. #3 overall on opendataloader-bench — ahead of marker, mineru, and every other free tool. Zero AI, zero API calls, zero GPU.
 
 <p align="center">
   <img src="demo.svg" alt="pdfmux terminal demo" width="700" />
@@ -29,16 +29,16 @@ Most PDF extractors run once and hope for the best. pdfmux extracts, audits ever
 
 Tested on [opendataloader-bench](https://github.com/opendataloader-project/opendataloader-bench) — 200 real-world PDFs across financial reports, legal filings, academic papers, and scanned documents.
 
-| Engine | Overall | Reading Order (NID) | Tables | Headings | Requires |
-|--------|---------|---------------------|--------|----------|----------|
+| Engine | Overall | Reading Order (NID) | Tables (TEDS) | Headings (MHS) | Requires |
+|--------|---------|---------------------|---------------|----------------|----------|
 | opendataloader hybrid | 0.909 | 0.935 | 0.928 | 0.828 | AI API calls |
-| docling | 0.877 | 0.899 | 0.887 | 0.802 | ~500MB ML models |
+| docling | 0.877 | 0.900 | 0.887 | 0.802 | ~500MB ML models |
+| **pdfmux** | **0.867** | **0.910** | **0.884** | 0.739 | **CPU only, zero cost** |
 | marker | 0.861 | 0.890 | 0.808 | 0.796 | GPU recommended |
-| **pdfmux** | **0.853** | **0.911** | 0.704 | 0.740 | **CPU only, zero cost** |
 | opendataloader local | 0.844 | 0.913 | 0.494 | 0.761 | CPU only |
 | mineru | 0.831 | 0.857 | 0.873 | 0.743 | GPU + ~2GB models |
 
-**#2 in reading order** across all engines tested. The three tools that score higher overall require paid AI API calls, GPU hardware, or heavyweight ML models. pdfmux achieves 94% of the top score at zero cost per page.
+**#3 overall, #1 among free tools.** The only two tools ahead require paid AI API calls (hybrid) or ~500MB of ML models (docling). pdfmux achieves 95% of the top score at zero cost per page — and beats marker, mineru, and every other open-source extractor.
 
 ## Quick Start
 

@@ -150,7 +150,7 @@ def _assign_levels(
     candidates: list[_HeadingCandidate],
     body_size: float,
 ) -> dict[str, int]:
-    """Map candidate texts to heading levels (1–3)."""
+    """Map candidate texts to heading levels (1–6)."""
     heading_candidates: list[_HeadingCandidate] = []
 
     for c in candidates:
@@ -183,7 +183,7 @@ def _assign_levels(
     )
 
     size_to_level: dict[float, int] = {}
-    for idx, size in enumerate(distinct_sizes[:3]):  # cap at h3
+    for idx, size in enumerate(distinct_sizes[:6]):  # support up to h6
         size_to_level[size] = idx + 1
 
     heading_map: dict[str, int] = {}
@@ -264,6 +264,12 @@ _BOLD_LINE_RE = re.compile(
     r"^\*\*(.{3,60})\*\*$"  # **short text** as entire line
 )
 
+# Split bold: **8** **Choosing between...** or **Chapter 1** **Introduction**
+_SPLIT_BOLD_RE = re.compile(
+    r"^(\*\*[^*]+\*\*\s*){2,}$"
+)
+
+
 
 def _promote_bold_lines(text: str) -> str:
     """Convert short bold-only lines at paragraph starts to ``###``."""
@@ -272,15 +278,29 @@ def _promote_bold_lines(text: str) -> str:
 
     for i, line in enumerate(lines):
         stripped = line.strip()
-        m = _BOLD_LINE_RE.match(stripped)
 
-        if m:
-            # Only promote if preceded by blank line or start of text
-            prev_blank = i == 0 or not lines[i - 1].strip()
-            if prev_blank:
-                result.append("### " + m.group(1))
+        # Skip lines that already have heading markers
+        if re.match(r"^#{1,6}\s", stripped):
+            result.append(line)
+            continue
+
+        prev_blank = i == 0 or not lines[i - 1].strip()
+
+        # Single bold span: **text**
+        m = _BOLD_LINE_RE.match(stripped)
+        if m and prev_blank:
+            result.append("### " + m.group(1))
+            continue
+
+        # Split bold: **8** **Choosing between...**
+        if prev_blank and _SPLIT_BOLD_RE.match(stripped):
+            clean = stripped.replace("**", "").strip()
+            if 3 <= len(clean) <= 80:
+                result.append("### " + clean)
                 continue
 
         result.append(line)
 
     return "\n".join(result)
+
+

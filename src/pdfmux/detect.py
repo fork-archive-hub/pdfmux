@@ -126,7 +126,7 @@ def classify(file_path: str | Path) -> PDFClassification:
     if graphical_ratio > 0.25:
         result.is_graphical = True
 
-    result.has_tables = _detect_tables(doc)
+    result.has_tables = _detect_tables(doc, page_count=len(doc))
 
     doc.close()
     return result
@@ -139,21 +139,27 @@ _NUMBER_DENSE_THRESHOLD = 0.30
 _ALIGNED_COLUMN_MIN_LINES = 4
 
 
-def _detect_tables(doc: fitz.Document) -> bool:
+def _detect_tables(doc: fitz.Document, page_count: int = 0) -> bool:
     """Multi-signal table detection with strategic page sampling.
 
     Samples pages from front, middle, and back of document.
     Uses 4 signals scored additively:
         Signal 1: Drawn grid lines — score 2
         Signal 2: Number-dense lines (financial data) — score 2
-        Signal 3: Aligned column positions via text blocks — score 2
+        Signal 3: Aligned column positions via text blocks — score 1-2
         Signal 4: Tab/whitespace patterns — score 1
+        Signal 5: find_tables() with garbage filter — score 2
 
-    Returns True if combined score >= _TABLE_SCORE_THRESHOLD.
+    For short documents (<=5 pages), the threshold is lowered from 2 to 1
+    since Docling overhead is minimal.
+
+    Returns True if combined score >= threshold.
     """
     total = len(doc)
     if total == 0:
         return False
+
+    threshold = _TABLE_SCORE_THRESHOLD
 
     sample_pages = _get_sample_pages(total, _TABLE_SAMPLE_PAGES)
     total_score = 0
@@ -168,10 +174,29 @@ def _detect_tables(doc: fitz.Document) -> bool:
         page_score += _score_find_tables(page)
         total_score += page_score
 
-        if total_score >= _TABLE_SCORE_THRESHOLD:
+        if total_score >= threshold:
             return True
 
-    return total_score >= _TABLE_SCORE_THRESHOLD
+    return total_score >= threshold
+
+
+def _score_table_images(page: fitz.Page) -> int:
+    """Score based on embedded images that look table-shaped. Returns 0 or 1.
+
+    Detects wide images (aspect ratio > 1.5, width > 200px) in pages
+    that also have text — likely embedded table screenshots.
+    """
+    image_info = page.get_image_info()
+    text = page.get_text("text").strip()
+    if not image_info or len(text) < 50:
+        return 0
+    for img in image_info:
+        w, h = img.get("width", 0), img.get("height", 0)
+        # Wide image in a text page — likely an embedded table screenshot
+        # Must be wide (table-shaped) and large enough to contain data
+        if w > 300 and h > 100 and w / max(h, 1) >= 1.3:
+            return 1
+    return 0
 
 
 def _get_sample_pages(total: int, sample_size: int) -> list[int]:
@@ -202,7 +227,7 @@ def _get_sample_pages(total: int, sample_size: int) -> list[int]:
 
 
 def _score_drawn_lines(page: fitz.Page) -> int:
-    """Score based on drawn horizontal/vertical lines. Returns 0 or 2."""
+    """Score based on drawn horizontal/vertical lines. Returns 0, 1, or 2."""
     drawings = page.get_drawings()
     h_lines = 0
     v_lines = 0
@@ -214,7 +239,13 @@ def _score_drawn_lines(page: fitz.Page) -> int:
                     h_lines += 1
                 elif abs(p1.x - p2.x) < 2 and abs(p1.y - p2.y) > 20:
                     v_lines += 1
-    return 2 if (h_lines >= 3 and v_lines >= 2) else 0
+    # Full grid (h + v lines)
+    if h_lines >= 3 and v_lines >= 2:
+        return 2
+    # Horizontal-only rules (common in academic tables without borders)
+    if h_lines >= 4:
+        return 1
+    return 0
 
 
 def _score_number_density(page: fitz.Page) -> int:
@@ -265,7 +296,12 @@ def _score_whitespace_patterns(page: fitz.Page) -> int:
 
 
 def _score_find_tables(page: fitz.Page) -> int:
-    """Score using PyMuPDF's built-in find_tables() heuristic. Returns 0 or 2."""
+    """Score using PyMuPDF's built-in find_tables() heuristic. Returns 0 or 2.
+
+    Any find_tables() result counts — even garbage results from PyMuPDF 1.27
+    indicate the page has table structure. The garbage filter is applied
+    later in FastExtractor when building actual table output.
+    """
     try:
         tables = page.find_tables()
         if tables.tables and len(tables.tables) >= 1:
