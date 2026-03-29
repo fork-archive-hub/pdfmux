@@ -19,6 +19,7 @@ Exit codes:
 from __future__ import annotations
 
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -101,12 +102,28 @@ def convert(
         "--stdout",
         help="Print output to stdout instead of writing to file.",
     ),
+    llm_provider: str | None = typer.Option(
+        None,
+        "--llm-provider",
+        help="LLM provider override: gemini, claude, openai, ollama.",
+    ),
+    llm_model: str | None = typer.Option(
+        None,
+        "--llm-model",
+        help="LLM model override (e.g. gpt-4o-mini, claude-sonnet-4-6-20250514).",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show INFO-level logs."),
     debug: bool = typer.Option(False, "--debug", help="Show DEBUG-level logs."),
     quiet: bool = typer.Option(False, "--quiet", help="Suppress all logs except errors."),
 ) -> None:
     """Convert a PDF (or directory of PDFs) to Markdown."""
     _configure_logging(verbose=verbose, debug=debug, quiet=quiet)
+
+    # Set LLM provider/model via env vars so extractors pick them up
+    if llm_provider:
+        os.environ["PDFMUX_LLM_PROVIDER"] = llm_provider
+    if llm_model:
+        os.environ["PDFMUX_LLM_MODEL"] = llm_model
 
     # Auto-switch to JSON format when schema is provided
     effective_format = format
@@ -195,15 +212,36 @@ def doctor() -> None:
 
     console.print(table)
 
-    import os
-
+    # LLM providers
     console.print()
-    gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if gemini_key:
-        console.print("[green]✓[/green] GEMINI_API_KEY set")
-    else:
-        console.print(r"[dim]✗ GEMINI_API_KEY not set (only needed for pdfmux\[llm])[/dim]")
+    console.print("[bold]LLM Providers[/bold]")
 
+    llm_table = Table(show_header=True, header_style="bold")
+    llm_table.add_column("Provider", min_width=10)
+    llm_table.add_column("SDK", min_width=12)
+    llm_table.add_column("API Key", min_width=12)
+    llm_table.add_column("Default Model", min_width=20)
+    llm_table.add_column("Install", min_width=28)
+
+    install_hints = {
+        "gemini": r"pip install pdfmux\[llm]",
+        "claude": r"pip install pdfmux\[llm-claude]",
+        "openai": r"pip install pdfmux\[llm-openai]",
+        "ollama": r"pip install pdfmux\[llm-ollama]",
+    }
+
+    try:
+        from pdfmux.extractors.llm_providers import all_provider_status
+
+        for p in all_provider_status():
+            sdk_status = "[green]✓[/green]" if p["sdk_installed"] else "[dim]✗[/dim]"
+            key_status = "[green]✓[/green]" if p["has_credentials"] else "[dim]✗[/dim]"
+            hint = "" if p["available"] else f"[dim]{install_hints.get(p['name'], '')}[/dim]"
+            llm_table.add_row(p["name"], sdk_status, key_status, str(p["default_model"]), hint)
+    except Exception:
+        llm_table.add_row("(error loading providers)", "", "", "", "")
+
+    console.print(llm_table)
     console.print()
 
 
@@ -243,7 +281,7 @@ def bench(
         "Docling",
         "RapidOCR",
         "Surya OCR",
-        "Gemini Flash",
+        "LLM Vision",
     ]
 
     table = Table(show_header=True, header_style="bold")
@@ -341,7 +379,7 @@ def bench(
                 conf = processed.confidence
                 status = "[green]✓[/green]"
 
-            elif name == "Gemini Flash":
+            elif name == "LLM Vision":
                 from pdfmux.extractors.llm import LLMExtractor
 
                 ext_l = LLMExtractor()

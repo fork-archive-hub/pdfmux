@@ -1,16 +1,27 @@
-"""LLM vision extractor — Gemini Flash for the hardest cases.
+"""LLM vision extractor — BYOK multi-provider support.
 
 Premium fallback for handwriting, complex forms, and documents
-that defeat rule-based extraction. Uses Gemini 2.5 Flash for best
-cost/accuracy ratio (~$0.01-0.05 per document).
+that defeat rule-based extraction. Supports Gemini, Claude,
+GPT-4o, and Ollama — auto-detects from available API keys.
 
-Install: pip install pdfmux[llm]
-Requires: GEMINI_API_KEY or GOOGLE_API_KEY env variable.
+Install providers:
+  pip install pdfmux[llm]           # Gemini (default)
+  pip install pdfmux[llm-claude]    # Claude
+  pip install pdfmux[llm-openai]    # GPT-4o
+  pip install pdfmux[llm-ollama]    # Ollama (local)
+  pip install pdfmux[llm-all]       # All providers
+
+Env vars:
+  PDFMUX_LLM_PROVIDER  — Force a provider (gemini/claude/openai/ollama)
+  PDFMUX_LLM_MODEL     — Override default model name
+  GEMINI_API_KEY        — Gemini auth
+  ANTHROPIC_API_KEY     — Claude auth
+  OPENAI_API_KEY        — GPT-4o auth
+  OLLAMA_BASE_URL       — Ollama endpoint (default localhost:11434)
 """
 
 from __future__ import annotations
 
-import base64
 import logging
 import os
 import tempfile
@@ -23,16 +34,6 @@ from pdfmux.extractors import register
 from pdfmux.types import PageQuality, PageResult
 
 logger = logging.getLogger(__name__)
-
-
-def _check_genai() -> bool:
-    """Check if google-genai is installed."""
-    try:
-        import google.genai  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
 
 
 EXTRACTION_PROMPT = """\
@@ -50,17 +51,44 @@ Rules:
 
 @register(name="llm", priority=50)
 class LLMExtractor:
-    """Extract text from PDFs using Gemini Flash vision API."""
+    """Extract text from PDFs using LLM vision APIs.
+
+    Auto-detects the best available provider from installed SDKs
+    and configured API keys. Can be overridden with PDFMUX_LLM_PROVIDER.
+    """
+
+    def __init__(self) -> None:
+        self._provider = None
+        self._provider_name: str | None = None
+
+    def _resolve(self):
+        """Lazily resolve the provider on first use."""
+        if self._provider is not None:
+            return
+        from pdfmux.extractors.llm_providers import resolve_provider
+
+        provider_override = os.environ.get("PDFMUX_LLM_PROVIDER")
+        model_override = os.environ.get("PDFMUX_LLM_MODEL")
+        self._provider = resolve_provider(provider_override, model_override)
+        self._provider_name = self._provider.name
 
     @property
     def name(self) -> str:
-        return "gemini-flash"
+        try:
+            self._resolve()
+            model = os.environ.get("PDFMUX_LLM_MODEL") or self._provider.default_model
+            return f"{self._provider_name}-{model.split('/')[-1].split('-')[0]}"
+        except (ValueError, Exception):
+            return "llm"
 
     def available(self) -> bool:
-        if not _check_genai():
+        """True if at least one LLM provider is configured."""
+        try:
+            from pdfmux.extractors.llm_providers import available_providers
+
+            return len(available_providers()) > 0
+        except Exception:
             return False
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        return api_key is not None
 
     def extract(
         self,
@@ -68,22 +96,9 @@ class LLMExtractor:
         pages: list[int] | None = None,
     ) -> Iterator[PageResult]:
         """Yield one PageResult per page via LLM vision."""
-        if not _check_genai():
-            from pdfmux.errors import ExtractorNotAvailable
+        self._resolve()
 
-            raise ExtractorNotAvailable(
-                "Google GenAI is not installed. Install with: pip install pdfmux[llm]"
-            )
-
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            from pdfmux.errors import ExtractionError
-
-            raise ExtractionError("No Gemini API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY.")
-
-        from google import genai
-
-        client = genai.Client(api_key=api_key)
+        model_override = os.environ.get("PDFMUX_LLM_MODEL")
 
         file_path = Path(file_path)
         doc = fitz.open(str(file_path))
@@ -94,6 +109,7 @@ class LLMExtractor:
             page = doc[page_num]
             pix = page.get_pixmap(dpi=200)
 
+            # Render page to PNG bytes
             tmp_path = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -105,26 +121,13 @@ class LLMExtractor:
                 if tmp_path and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
 
-            image_b64 = base64.b64encode(image_bytes).decode()
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[
-                    {
-                        "parts": [
-                            {"text": EXTRACTION_PROMPT},
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/png",
-                                    "data": image_b64,
-                                }
-                            },
-                        ]
-                    }
-                ],
+            # Send to LLM provider
+            text = self._provider.extract_page(
+                image_bytes=image_bytes,
+                prompt=EXTRACTION_PROMPT,
+                model=model_override,
             )
 
-            text = response.text if response.text else ""
             has_text = len(text.strip()) > 10
 
             yield PageResult(
