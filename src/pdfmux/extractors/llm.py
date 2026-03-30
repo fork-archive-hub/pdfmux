@@ -130,10 +130,21 @@ class LLMExtractor:
 
             has_text = len(text.strip()) > 10
 
+            # Dynamic quality scoring instead of hardcoded 0.90
+            if has_text:
+                try:
+                    from pdfmux.router.scorer import score_llm_output
+
+                    confidence = score_llm_output(text.strip())
+                except Exception:
+                    confidence = 0.85  # safe fallback
+            else:
+                confidence = 0.0
+
             yield PageResult(
                 page_num=page_num,
                 text=text.strip(),
-                confidence=0.90 if has_text else 0.0,
+                confidence=confidence,
                 quality=PageQuality.GOOD if has_text else PageQuality.EMPTY,
                 extractor=self.name,
                 image_count=len(page.get_images(full=True)),
