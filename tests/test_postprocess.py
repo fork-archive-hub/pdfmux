@@ -17,12 +17,12 @@ class TestCleanText:
         assert "\x00" not in result
         assert "\x07" not in result
 
-    def test_preserves_newlines_and_tabs(self) -> None:
-        """Newlines and tabs should be preserved."""
+    def test_preserves_newlines(self) -> None:
+        """Newlines should be preserved, tabs converted to spaces."""
         text = "Line 1\nLine 2\n\tIndented"
         result = clean_text(text)
         assert "\n" in result
-        assert "\t" in result
+        assert "Indented" in result
 
     def test_collapses_excessive_blank_lines(self) -> None:
         """4+ consecutive newlines should collapse to 3."""

@@ -176,6 +176,24 @@ def process(
         except Exception as e:
             logger.debug("Agentic improvement skipped: %s", e)
 
+    # Step 2.75: Record telemetry (opt-in via PDFMUX_TELEMETRY=local)
+    try:
+        from pdfmux.router.learning import TelemetryCollector, is_telemetry_enabled
+
+        if is_telemetry_enabled():
+            collector = TelemetryCollector()
+            page_type = _classify_to_page_type(classification)
+            for p in pages:
+                collector.record_extraction(
+                    page_type=page_type,
+                    extractor=p.extractor,
+                    confidence=p.confidence,
+                    latency_ms=0,  # per-page timing not tracked yet
+                    cost_usd=p.cost_usd,
+                )
+    except Exception:
+        pass  # telemetry should never break extraction
+
     # Step 3: Compute confidence
     unrecovered = sum(
         1 for p in pages if p.quality in (PageQuality.BAD, PageQuality.EMPTY) and not p.ocr_applied
@@ -281,12 +299,25 @@ def _route_and_extract(
     classification: PDFClassification,
     quality: Quality,
 ) -> tuple[list[PageResult], str, list[int]]:
-    """Route to the appropriate extractor.
+    """Route to the appropriate extractor using the RouterEngine.
+
+    Uses the router for intelligent per-page-type decisions,
+    with fallback to proven extraction patterns.
 
     Returns:
         (pages, extractor_name, ocr_page_numbers)
     """
-    # Fast mode: PyMuPDF only, skip audit (with optional table enhancement)
+    # Map Quality to router Strategy
+    from pdfmux.router.strategies import Strategy
+
+    strategy_map = {
+        Quality.FAST: Strategy.ECONOMY,
+        Quality.STANDARD: Strategy.BALANCED,
+        Quality.HIGH: Strategy.PREMIUM,
+    }
+    strategy = strategy_map.get(quality, Strategy.BALANCED)
+
+    # Fast/Economy mode: PyMuPDF only, skip audit
     if quality == Quality.FAST:
         from pdfmux.extractors.fast import FastExtractor
 
@@ -297,12 +328,98 @@ def _route_and_extract(
         ))
         return pages, ext.name, []
 
-    # High mode: LLM for everything
+    # High/Premium mode: LLM for everything
     if quality == Quality.HIGH:
         pages, name = _try_llm_extractor(file_path)
         return pages, name, []
 
-    # OpenDataLoader → use when available (best reading order + tables)
+    # Standard/Balanced mode: use RouterEngine for intelligent routing
+    try:
+        from pdfmux.router.engine import RouterEngine
+
+        router = RouterEngine()
+
+        # Determine primary page type from classification
+        page_type = _classify_to_page_type(classification)
+        budget_str = os.environ.get("PDFMUX_BUDGET")
+        budget = float(budget_str) if budget_str else None
+
+        decision = router.select(page_type, strategy, budget)
+        logger.info("Router decision: %s (%s)", decision.extractor, decision.reason)
+
+        # Execute the router's decision
+        pages, name, ocr_pages = _execute_route_decision(
+            file_path, classification, decision
+        )
+        if pages:
+            return pages, name, ocr_pages
+
+    except Exception as e:
+        logger.debug("Router failed, using legacy routing: %s", e)
+
+    # Fallback: legacy routing (if router fails or returns empty)
+    return _legacy_route_and_extract(file_path, classification)
+
+
+def _classify_to_page_type(classification: PDFClassification) -> str:
+    """Convert PDFClassification to a router page type string."""
+    if classification.is_scanned:
+        return "scanned"
+    if classification.has_tables:
+        return "tables"
+    if classification.is_graphical:
+        return "graphical"
+    if classification.is_mixed:
+        return "mixed"
+    return "digital"
+
+
+def _execute_route_decision(
+    file_path: Path,
+    classification: PDFClassification,
+    decision,
+) -> tuple[list[PageResult], str, list[int]]:
+    """Execute a RouteDecision by calling the appropriate extractor."""
+    extractor_name = decision.extractor
+
+    if extractor_name == "opendataloader":
+        try:
+            from pdfmux.extractors.opendataloader import OpenDataLoaderExtractor
+
+            odl = OpenDataLoaderExtractor()
+            if odl.available():
+                pages = list(odl.extract(file_path))
+                if pages and any(len(p.text.strip()) > 10 for p in pages):
+                    return pages, odl.name, []
+        except Exception:
+            pass
+
+    elif extractor_name == "docling":
+        if classification.has_tables:
+            pages, name = _try_targeted_table_extraction(file_path, classification)
+            return pages, name, []
+
+    elif extractor_name == "llm":
+        pages, name = _try_llm_extractor(file_path)
+        return pages, name, []
+
+    elif extractor_name == "pymupdf":
+        pass  # fall through to multipass below
+
+    # Default: multi-pass extraction with table overlay
+    pages, name, ocr_pages = _multipass_extract(file_path, classification)
+    pages, overlay_applied = _overlay_docling_tables(file_path, pages)
+    if overlay_applied:
+        name += " + docling-tables"
+    return pages, name, ocr_pages
+
+
+def _legacy_route_and_extract(
+    file_path: Path,
+    classification: PDFClassification,
+) -> tuple[list[PageResult], str, list[int]]:
+    """Legacy routing — used as fallback if RouterEngine fails."""
+    # OpenDataLoader → use when available
     try:
         from pdfmux.extractors.opendataloader import OpenDataLoaderExtractor
 
@@ -310,25 +427,20 @@ def _route_and_extract(
         if odl.available():
             pages = list(odl.extract(file_path))
             if pages and any(len(p.text.strip()) > 10 for p in pages):
-                logger.info("Using OpenDataLoader for extraction")
                 return pages, odl.name, []
     except Exception:
         pass
 
-    # Tables → targeted Docling on table pages, fast for the rest
+    # Tables → targeted Docling
     if classification.has_tables and not classification.is_graphical:
         pages, name = _try_targeted_table_extraction(file_path, classification)
         return pages, name, []
 
     # Standard → multi-pass + Docling table overlay
     pages, name, ocr_pages = _multipass_extract(file_path, classification)
-
-    # Try Docling table overlay: extract ONLY tables from Docling
-    # and append to PyMuPDF text. Catches tables the classifier missed.
     pages, overlay_applied = _overlay_docling_tables(file_path, pages)
     if overlay_applied:
         name += " + docling-tables"
-
     return pages, name, ocr_pages
 
 

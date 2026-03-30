@@ -105,9 +105,11 @@ def test_load_llm_context_pages_1_indexed(digital_pdf: Path) -> None:
         assert chunk["page_end"] >= chunk["page_start"]
 
 
-def test_version_is_1_1_0() -> None:
-    """Module version should be 1.1.0."""
-    assert pdfmux.__version__ == "1.1.0"
+def test_version_format() -> None:
+    """Module version should be a valid semver string."""
+    import re
+
+    assert re.match(r"^\d+\.\d+\.\d+", pdfmux.__version__)
 
 
 def test_all_exports() -> None:
