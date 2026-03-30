@@ -231,13 +231,14 @@ def doctor() -> None:
     }
 
     try:
-        from pdfmux.extractors.llm_providers import all_provider_status
+        from pdfmux.providers import all_provider_status
 
         for p in all_provider_status():
             sdk_status = "[green]✓[/green]" if p["sdk_installed"] else "[dim]✗[/dim]"
             key_status = "[green]✓[/green]" if p["has_credentials"] else "[dim]✗[/dim]"
             hint = "" if p["available"] else f"[dim]{install_hints.get(p['name'], '')}[/dim]"
-            llm_table.add_row(p["name"], sdk_status, key_status, str(p["default_model"]), hint)
+            display_name = f"{p['name']} [dim](custom)[/dim]" if p.get("custom") else p["name"]
+            llm_table.add_row(display_name, sdk_status, key_status, str(p["default_model"]), hint)
     except Exception:
         llm_table.add_row("(error loading providers)", "", "", "", "")
 

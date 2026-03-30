@@ -65,7 +65,7 @@ class LLMExtractor:
         """Lazily resolve the provider on first use."""
         if self._provider is not None:
             return
-        from pdfmux.extractors.llm_providers import resolve_provider
+        from pdfmux.providers import resolve_provider
 
         provider_override = os.environ.get("PDFMUX_LLM_PROVIDER")
         model_override = os.environ.get("PDFMUX_LLM_MODEL")
@@ -84,7 +84,7 @@ class LLMExtractor:
     def available(self) -> bool:
         """True if at least one LLM provider is configured."""
         try:
-            from pdfmux.extractors.llm_providers import available_providers
+            from pdfmux.providers import available_providers
 
             return len(available_providers()) > 0
         except Exception:
