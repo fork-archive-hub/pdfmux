@@ -147,26 +147,3 @@ def extract_key_values(
     return result
 
 
-def extract_key_values_multi_page(
-    pages: list[tuple[int, str]],
-) -> list[KeyValuePair]:
-    """Extract key-value pairs from multiple pages.
-
-    Args:
-        pages: List of (page_num, page_text) tuples.
-
-    Returns:
-        Consolidated list of KeyValuePair objects.
-    """
-    all_kvs: list[KeyValuePair] = []
-    seen_keys: set[str] = set()
-
-    for page_num, text in pages:
-        kvs = extract_key_values(text, page_num=page_num)
-        for kv in kvs:
-            norm_key = kv.key.lower()
-            if norm_key not in seen_keys:
-                all_kvs.append(kv)
-                seen_keys.add(norm_key)
-
-    return all_kvs

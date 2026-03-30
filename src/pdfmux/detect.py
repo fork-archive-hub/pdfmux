@@ -180,25 +180,6 @@ def _detect_tables(doc: fitz.Document, page_count: int = 0) -> bool:
     return total_score >= threshold
 
 
-def _score_table_images(page: fitz.Page) -> int:
-    """Score based on embedded images that look table-shaped. Returns 0 or 1.
-
-    Detects wide images (aspect ratio > 1.5, width > 200px) in pages
-    that also have text — likely embedded table screenshots.
-    """
-    image_info = page.get_image_info()
-    text = page.get_text("text").strip()
-    if not image_info or len(text) < 50:
-        return 0
-    for img in image_info:
-        w, h = img.get("width", 0), img.get("height", 0)
-        # Wide image in a text page — likely an embedded table screenshot
-        # Must be wide (table-shaped) and large enough to contain data
-        if w > 300 and h > 100 and w / max(h, 1) >= 1.3:
-            return 1
-    return 0
-
-
 def _get_sample_pages(total: int, sample_size: int) -> list[int]:
     """Select pages from front, quarter, middle, three-quarter, and back.
 
@@ -311,115 +292,8 @@ def _score_find_tables(page: fitz.Page) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Layout detection — multi-column reading order
-# ---------------------------------------------------------------------------
 
-# Minimum gap between column x-positions to consider them separate columns
-_COLUMN_GAP_MIN = 50.0  # points (~0.7 inches)
+# NOTE: Layout detection (detect_layout) moved to column_reorder.py
+# which handles multi-column reading order correction in production.
 
 
-def detect_layout(page: fitz.Page) -> PageLayout:
-    """Detect column structure and reading order for a page.
-
-    Algorithm:
-    1. Extract text blocks with bboxes
-    2. Cluster block x0 (left-edge) positions with gap detection
-    3. 2+ clusters = multi-column
-    4. Sort blocks column-by-column (left columns first, top-to-bottom within each)
-
-    Args:
-        page: A PyMuPDF page object.
-
-    Returns:
-        PageLayout with column count, boundaries, and reading order.
-    """
-    blocks = page.get_text("blocks")  # (x0, y0, x1, y1, text, block_no, type)
-    text_blocks = [(i, b) for i, b in enumerate(blocks) if b[6] == 0 and b[4].strip()]
-
-    if not text_blocks:
-        return PageLayout(columns=1, column_boundaries=(), reading_order=())
-
-    # Cluster x0 positions
-    x0_positions = sorted(set(b[0] for _, b in text_blocks))
-    column_groups = _cluster_positions(x0_positions)
-
-    if len(column_groups) < 2:
-        # Single column — natural order (top to bottom)
-        order = tuple(i for i, _ in sorted(text_blocks, key=lambda t: t[1][1]))
-        page_width = page.rect.width
-        return PageLayout(
-            columns=1,
-            column_boundaries=((0.0, page_width),),
-            reading_order=order,
-        )
-
-    # Multi-column: assign blocks to columns, sort within each
-    boundaries = _build_column_boundaries(column_groups, page.rect.width)
-    reading_order = _build_reading_order(text_blocks, boundaries)
-
-    return PageLayout(
-        columns=len(boundaries),
-        column_boundaries=tuple(boundaries),
-        reading_order=tuple(reading_order),
-    )
-
-
-def _cluster_positions(positions: list[float]) -> list[list[float]]:
-    """Cluster sorted x-positions into column groups by gap detection."""
-    if not positions:
-        return []
-
-    clusters: list[list[float]] = [[positions[0]]]
-    for pos in positions[1:]:
-        if pos - clusters[-1][-1] > _COLUMN_GAP_MIN:
-            clusters.append([pos])
-        else:
-            clusters[-1].append(pos)
-
-    return clusters
-
-
-def _build_column_boundaries(
-    clusters: list[list[float]], page_width: float
-) -> list[tuple[float, float]]:
-    """Build (x_min, x_max) boundaries for each column cluster."""
-    boundaries = []
-    for i, cluster in enumerate(clusters):
-        x_min = min(cluster)
-        # x_max extends to start of next cluster (or page width)
-        if i + 1 < len(clusters):
-            x_max = min(clusters[i + 1]) - 1.0
-        else:
-            x_max = page_width
-        boundaries.append((x_min, x_max))
-    return boundaries
-
-
-def _build_reading_order(
-    text_blocks: list[tuple[int, tuple]],
-    boundaries: list[tuple[float, float]],
-) -> list[int]:
-    """Assign blocks to columns and sort: left-to-right columns, top-to-bottom within."""
-    columned: list[list[tuple[int, float]]] = [[] for _ in boundaries]
-
-    for block_idx, block in text_blocks:
-        x0 = block[0]
-        y0 = block[1]
-        # Find closest column
-        best_col = 0
-        best_dist = abs(x0 - boundaries[0][0])
-        for col_idx, (col_min, col_max) in enumerate(boundaries):
-            dist = abs(x0 - col_min)
-            if dist < best_dist:
-                best_dist = dist
-                best_col = col_idx
-        columned[best_col].append((block_idx, y0))
-
-    # Sort within each column by y0 (top to bottom)
-    order = []
-    for col_blocks in columned:
-        col_blocks.sort(key=lambda t: t[1])
-        order.extend(idx for idx, _ in col_blocks)
-
-    return order

@@ -75,14 +75,6 @@ DEFAULT_CHAIN: dict[Strategy, tuple[str, ...]] = {
     Strategy.PREMIUM: ("llm", "opendataloader", "pymupdf"),
 }
 
-# Extractor name → pip install hint
-INSTALL_HINTS: dict[str, str] = {
-    "opendataloader": "pip install pdfmux[opendataloader]",
-    "docling": "pip install pdfmux[tables]",
-    "rapidocr": "pip install pdfmux[ocr]",
-    "llm": "pip install pdfmux[llm]",
-}
-
 # Approximate cost per page (USD) for cost scoring
 COST_PER_PAGE: dict[str, float] = {
     "pymupdf": 0.0,
@@ -119,16 +111,6 @@ QUALITY_ESTIMATES: dict[tuple[str, str], float] = {
     ("llm", "graphical"): 0.82,
     ("llm", "handwritten"): 0.80,
     ("llm", "forms"): 0.85,
-}
-
-# Approximate speed (pages per second)
-SPEED_ESTIMATES: dict[str, float] = {
-    "pymupdf": 100.0,
-    "opendataloader": 20.0,
-    "docling": 1.0,
-    "rapidocr": 2.0,
-    "surya": 1.0,
-    "llm": 0.5,
 }
 
 
