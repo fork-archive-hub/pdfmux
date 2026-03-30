@@ -157,6 +157,25 @@ def process(
     else:
         pages, extractor_name, ocr_pages = _route_and_extract(file_path, classification, qual)
 
+    # Step 2.5: Agentic multi-pass improvement (standard + high modes only)
+    if qual != Quality.FAST:
+        try:
+            from pdfmux.agentic import agentic_improve
+
+            budget_str = os.environ.get("PDFMUX_BUDGET")
+            budget = float(budget_str) if budget_str else None
+
+            pages, extractor_name, passes = agentic_improve(
+                pages,
+                file_path,
+                extractor_name,
+                budget=budget,
+            )
+            if passes > 1:
+                logger.info("Agentic extraction used %d passes", passes)
+        except Exception as e:
+            logger.debug("Agentic improvement skipped: %s", e)
+
     # Step 3: Compute confidence
     unrecovered = sum(
         1 for p in pages if p.quality in (PageQuality.BAD, PageQuality.EMPTY) and not p.ocr_applied
