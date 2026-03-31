@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "pdfmux"
 version = "1.4.0"
-description = "PDF extraction that checks its own work. Typed, streaming multi-pass pipeline for LLM-ready Markdown."
+description = "Universal PDF extraction orchestrator. Routes each page to the best of 5 backends + BYOK LLM, audits output, re-extracts failures. CLI, Python API, MCP server, LangChain, LlamaIndex."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
     { name = "Nameet Potnis" },
 ]
-keywords = ["pdf", "markdown", "llm", "ai", "mcp", "extraction", "converter"]
+keywords = ["pdf", "markdown", "llm", "ai", "mcp", "extraction", "converter", "rag", "ocr", "langchain", "llamaindex", "orchestrator", "document-ingestion"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

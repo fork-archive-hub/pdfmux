@@ -6,195 +6,259 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/pypi/dm/pdfmux)](https://pypi.org/project/pdfmux/)
 
-The only PDF extractor that checks its own work. **#2 overall** on opendataloader-bench — ahead of docling, marker, mineru, and every other open-source extractor. Zero AI, zero API calls, zero GPU.
+Universal PDF extraction orchestrator. Routes each page to the best backend, audits the output, re-extracts failures. 5 rule-based extractors + BYOK LLM fallback. One CLI. One API. Zero config.
 
 <p align="center">
   <img src="demo.svg" alt="pdfmux terminal demo" width="700" />
 </p>
 
 ```
-PDF ──→ pdfmux ──→ Markdown / JSON
-         │
-         ├─ fast extract every page
-         ├─ audit each page (5 quality checks)
-         ├─ re-extract bad pages with surgical OCR
-         ├─ detect headings via font-size analysis
-         ├─ merge → clean → confidence score
-         └─ extract tables, key-values, normalize dates/amounts
+PDF ──> pdfmux router ──> best extractor per page ──> audit ──> re-extract failures ──> Markdown / JSON / chunks
+            |
+            ├─ PyMuPDF         (digital text, 0.01s/page)
+            ├─ OpenDataLoader  (complex layouts, 0.05s/page)
+            ├─ RapidOCR        (scanned pages, CPU-only)
+            ├─ Docling          (tables, 97.9% TEDS)
+            ├─ Surya            (heavy OCR fallback)
+            └─ YOUR LLM        (Gemini / Claude / GPT-4o / Ollama — BYOK via 5-line YAML)
 ```
-
-Most PDF extractors run once and hope for the best. pdfmux extracts, audits every page, and re-extracts the ones that came out wrong — automatically. No GPU, no API keys, no cloud dependency.
-
-## Benchmark
-
-Tested on [opendataloader-bench](https://github.com/opendataloader-project/opendataloader-bench) — 200 real-world PDFs across financial reports, legal filings, academic papers, and scanned documents.
-
-| Engine | Overall | Reading Order (NID) | Tables (TEDS) | Headings (MHS) | Requires |
-|--------|---------|---------------------|---------------|----------------|----------|
-| opendataloader hybrid | 0.909 | 0.935 | 0.928 | 0.828 | AI API calls |
-| **pdfmux** | **0.900** | **0.918** | **0.887** | **0.844** | **CPU only, zero cost** |
-| docling | 0.877 | 0.900 | 0.887 | 0.802 | ~500MB ML models |
-| marker | 0.861 | 0.890 | 0.808 | 0.796 | GPU recommended |
-| opendataloader local | 0.844 | 0.913 | 0.494 | 0.761 | CPU only |
-| mineru | 0.831 | 0.857 | 0.873 | 0.743 | GPU + ~2GB models |
-
-**#2 overall, #1 among free tools.** 99% of the paid #1 score — at zero cost per page. Beats docling (+2.3%), marker (+3.9%), and every other open-source extractor. Best heading detection of any engine, paid or free.
-
-## Quick Start
-
-```bash
-pip install pdfmux
-
-pdfmux invoice.pdf
-# ✓ invoice.pdf → invoice.md (2 pages, 95% confidence, via pymupdf4llm)
-```
-
-No config, no flags, no API keys needed.
 
 ## Install
 
 ```bash
-# core — handles digital PDFs instantly (the vast majority)
 pip install pdfmux
+```
 
-# add OpenDataLoader for best-in-class accuracy (Java 11+ required)
-pip install "pdfmux[opendataloader]"
+That's it. Handles digital PDFs out of the box. Add backends for harder documents:
 
-# add OCR for scanned/image-heavy pages (~200MB, CPU-only)
-pip install "pdfmux[ocr]"
-
-# add table extraction (Docling — 97.9% table accuracy)
-pip install "pdfmux[tables]"
-
-# add LLM fallback for hardest cases (Gemini Flash)
-pip install "pdfmux[llm]"
-
-# everything
-pip install "pdfmux[all]"
+```bash
+pip install "pdfmux[ocr]"             # RapidOCR — scanned/image pages (~200MB, CPU-only)
+pip install "pdfmux[tables]"          # Docling — table-heavy docs (~500MB)
+pip install "pdfmux[opendataloader]"  # OpenDataLoader — complex layouts (Java 11+)
+pip install "pdfmux[llm]"            # LLM fallback — Gemini, Claude, GPT-4o, Ollama
+pip install "pdfmux[all]"            # everything
 ```
 
 Requires Python 3.11+.
 
-## How It Works
+## Quick Start
 
-### Multi-pass extraction
+### CLI
 
-Every PDF goes through a multi-pass pipeline. This is what makes pdfmux different.
+```bash
+# zero config — just works
+pdfmux convert invoice.pdf
+# invoice.pdf -> invoice.md (2 pages, 95% confidence, via pymupdf4llm)
 
-```
-Pass 1 — Fast extract + audit
-  For each page:
-    ├─ Extract text with PyMuPDF (instant)
-    ├─ Count characters + images
-    └─ Classify: "good" / "bad" / "empty"
+# RAG-ready chunks with token limits
+pdfmux convert report.pdf --chunk --max-tokens 500
 
-  All pages good? → done. Zero overhead.
+# cost-aware extraction with budget cap
+pdfmux convert report.pdf --mode economy --budget 0.50
 
-Pass 2 — Selective OCR (only bad pages)
-  For each bad/empty page:
-    ├─ Try RapidOCR  (~200MB, CPU, Apache 2.0)
-    ├─ Try Surya OCR  (fallback, heavier)
-    └─ Try Gemini LLM (fallback, API)
+# schema-guided structured extraction (5 built-in presets)
+pdfmux convert invoice.pdf --schema invoice
 
-  Smart comparison:
-    ├─ "bad" page (some text): only use OCR if it got MORE text
-    └─ "empty" page (no text): accept any OCR result >10 chars
+# BYOK any LLM for hardest pages
+pdfmux convert scan.pdf --llm-provider claude
 
-Pass 3 — Heading detection
-  ├─ Analyze font sizes per page via PyMuPDF spans
-  ├─ Identify heading levels from size clusters
-  └─ Inject markdown heading markers (# / ## / ###)
-
-Pass 4 — Merge + score
-  ├─ Combine good pages + OCR'd pages in order
-  ├─ Clean text (broken words, control chars, spacing)
-  └─ Confidence score (honest — reflects actual quality)
+# batch a directory
+pdfmux convert ./docs/ -o ./output/
 ```
 
-**The fast path is free.** Digital PDFs pass through in ~0.01s/page with zero OCR overhead. The audit step adds negligible cost. You only pay for OCR on pages that actually need it.
-
-### Detection
-
-pdfmux opens each PDF with PyMuPDF and classifies it:
-
-```
-Per page:
-  ├─ Has >50 chars of text?             → digital
-  ├─ Has images but no/little text?     → graphical (image-heavy)
-  └─ No text, no images?                → empty
-
-Document level:
-  ├─ ≥80% digital pages                 → digital PDF
-  ├─ ≥80% scanned pages                 → scanned PDF
-  ├─ Image-heavy pages detected         → graphical PDF
-  └─ Mix of types                       → mixed PDF
-
-Table detection:
-  ├─ Ruled line patterns (≥3 horiz + ≥2 vert lines)
-  └─ Tab-separated or aligned text patterns
-```
-
-### Routing
-
-```
-classify(pdf)
-  │
-  ├─ quality=fast     → PyMuPDF only (instant, free)
-  ├─ quality=high     → Gemini Flash → OCR → PyMuPDF
-  │
-  └─ quality=standard (default):
-       ├─ has tables (not graphical) → Docling → PyMuPDF fallback
-       └─ everything else            → multi-pass pipeline
-```
-
-If an optional extractor isn't installed, pdfmux silently falls back to the next best option. No errors, no config.
-
-### Extractors
-
-| Tier | Extractor | What it handles | Speed | Size | Install |
-|------|-----------|----------------|-------|------|---------|
-| Fast | PyMuPDF / pymupdf4llm | Digital PDFs with clean text | 0.01s/page | Base | Base |
-| OCR | RapidOCR (PaddleOCR v4) | Scanned / image-heavy pages | 0.5-2s/page | ~200MB | `pdfmux[ocr]` |
-| Tables | Docling | Table-heavy documents | 0.3-3s/page | ~500MB | `pdfmux[tables]` |
-| OCR Heavy | Surya OCR | Scanned PDFs (legacy, GPU) | 1-5s/page | ~5GB | `pdfmux[ocr-heavy]` |
-| LLM | Gemini 2.5 Flash | Complex layouts, handwriting | 2-5s/page | API | `pdfmux[llm]` |
-
-### Confidence scoring
-
-Every result includes an honest confidence score:
-
-- **95-100%** — clean digital text, fully extractable
-- **80-95%** — good extraction, minor OCR noise on some pages
-- **50-80%** — partial extraction, some pages couldn't be recovered
-- **<50%** — significant content missing, warnings included
-
-When confidence is below 80%, pdfmux tells you exactly what went wrong and how to fix it (e.g., "Install `pdfmux[ocr]` for better results on 6 image-heavy pages").
-
-## Python API
+### Python
 
 ```python
 import pdfmux
 
-# Simple text extraction → Markdown string
+# text -> markdown
 text = pdfmux.extract_text("report.pdf")
-print(text[:200])
 
-# Structured extraction → dict with locked schema
+# structured data -> dict with tables, key-values, metadata
 data = pdfmux.extract_json("report.pdf")
-print(f"{data['page_count']} pages, {data['confidence']:.0%}")
-print(f"OCR pages: {data['ocr_pages']}")
 
-# LLM-ready chunks → list of dicts with token estimates
-chunks = pdfmux.load_llm_context("report.pdf")
+# RAG chunks -> list of dicts with token estimates
+chunks = pdfmux.chunk("report.pdf", max_tokens=500)
+```
+
+## Architecture
+
+```
+                           ┌─────────────────────────────┐
+                           │     Segment Detector         │
+                           │  text / tables / images /    │
+                           │  formulas / headers per page │
+                           └─────────────┬───────────────┘
+                                         │
+                    ┌────────────────────────────────────────┐
+                    │            Router Engine                │
+                    │                                        │
+                    │   economy ── balanced ── premium        │
+                    │   (minimize $)  (default)  (max quality)│
+                    │   budget caps: --budget 0.50            │
+                    └────────────────────┬───────────────────┘
+                                         │
+          ┌──────────┬──────────┬────────┴────────┬──────────┐
+          │          │          │                  │          │
+     PyMuPDF   OpenData    RapidOCR           Docling     LLM
+     digital   Loader      scanned            tables    (BYOK)
+     0.01s/pg  complex     CPU-only           97.9%    any provider
+               layouts                        TEDS
+          │          │          │                  │          │
+          └──────────┴──────────┴────────┬────────┴──────────┘
+                                         │
+                    ┌────────────────────────────────────────┐
+                    │           Quality Auditor               │
+                    │                                        │
+                    │   4-signal dynamic confidence scoring   │
+                    │   per-page: good / bad / empty          │
+                    │   if bad -> re-extract with next backend│
+                    └────────────────────┬───────────────────┘
+                                         │
+                    ┌────────────────────────────────────────┐
+                    │           Output Pipeline               │
+                    │                                        │
+                    │   heading injection (font-size analysis)│
+                    │   table extraction + normalization      │
+                    │   text cleanup + merge                  │
+                    │   confidence score (honest, not inflated)│
+                    └────────────────────────────────────────┘
+```
+
+### Key design decisions
+
+- **Router, not extractor.** pdfmux does not compete with PyMuPDF or Docling. It picks the best one per page.
+- **Agentic multi-pass.** Extract, audit confidence, re-extract failures with a stronger backend. Bad pages get retried automatically.
+- **Segment-level detection.** Each page is classified by content type (text, tables, images, formulas, headers) before routing.
+- **4-signal confidence.** Dynamic quality scoring from character density, OCR noise ratio, table integrity, and heading structure. Not hardcoded thresholds.
+- **Document cache.** Each PDF is opened once, not once per extractor. Shared across the full pipeline.
+- **Data flywheel.** Local telemetry tracks which extractors win per document type. Routing improves with usage.
+
+## Features
+
+| Feature | What it does | Command |
+|---------|-------------|---------|
+| Zero-config extraction | Routes to best backend automatically | `pdfmux convert file.pdf` |
+| RAG chunking | Section-aware chunks with token estimates | `pdfmux convert file.pdf --chunk --max-tokens 500` |
+| Cost modes | economy / balanced / premium with budget caps | `pdfmux convert file.pdf --mode economy --budget 0.50` |
+| Schema extraction | 5 built-in presets (invoice, receipt, contract, resume, paper) | `pdfmux convert file.pdf --schema invoice` |
+| BYOK LLM | Gemini, Claude, GPT-4o, Ollama, any OpenAI-compatible API | `pdfmux convert file.pdf --llm-provider claude` |
+| Benchmark | Eval all installed extractors against ground truth | `pdfmux benchmark` |
+| Doctor | Show installed backends, coverage gaps, recommendations | `pdfmux doctor` |
+| MCP server | AI agents read PDFs via stdio or HTTP | `pdfmux serve` |
+| Batch processing | Convert entire directories | `pdfmux convert ./docs/` |
+| Streaming | Bounded-memory page iteration for large files | `for page in ext.extract("500pg.pdf")` |
+
+## CLI Reference
+
+### `pdfmux convert`
+
+```bash
+pdfmux convert <file-or-dir> [options]
+
+Options:
+  -o, --output PATH          Output file or directory
+  -f, --format FORMAT        markdown | json | csv | llm (default: markdown)
+  -q, --quality QUALITY      fast | standard | high (default: standard)
+  -s, --schema SCHEMA        JSON schema file or preset (invoice, receipt, contract, resume, paper)
+  --chunk                    Output RAG-ready chunks
+  --max-tokens N             Max tokens per chunk (default: 500)
+  --mode MODE                economy | balanced | premium (default: balanced)
+  --budget AMOUNT            Max spend per document in USD
+  --llm-provider PROVIDER    LLM backend: gemini | claude | openai | ollama
+  --confidence               Include confidence score in output
+  --stdout                   Print to stdout instead of file
+```
+
+### `pdfmux serve`
+
+Start the MCP server for AI agent integration.
+
+```bash
+pdfmux serve              # stdio mode (Claude Desktop, Cursor)
+pdfmux serve --http 8080  # HTTP mode
+```
+
+### `pdfmux doctor`
+
+```bash
+pdfmux doctor
+# ┌──────────────────┬─────────────┬─────────┬──────────────────────────────────┐
+# │ Extractor        │ Status      │ Version │ Install                          │
+# ├──────────────────┼─────────────┼─────────┼──────────────────────────────────┤
+# │ PyMuPDF          │ installed   │ 1.25.3  │                                  │
+# │ OpenDataLoader   │ installed   │ 0.3.1   │                                  │
+# │ RapidOCR         │ installed   │ 3.0.6   │                                  │
+# │ Docling          │ missing     │ --      │ pip install pdfmux[tables]       │
+# │ Surya            │ missing     │ --      │ pip install pdfmux[ocr-heavy]    │
+# │ LLM (Gemini)     │ configured  │ --      │ GEMINI_API_KEY set               │
+# └──────────────────┴─────────────┴─────────┴──────────────────────────────────┘
+```
+
+### `pdfmux benchmark`
+
+```bash
+pdfmux benchmark report.pdf
+# ┌──────────────────┬────────┬────────────┬─────────────┬──────────────────────┐
+# │ Extractor        │   Time │ Confidence │      Output │ Status               │
+# ├──────────────────┼────────┼────────────┼─────────────┼──────────────────────┤
+# │ PyMuPDF          │  0.02s │        95% │ 3,241 chars │ all pages good       │
+# │ Multi-pass       │  0.03s │        95% │ 3,241 chars │ all pages good       │
+# │ RapidOCR         │  4.20s │        88% │ 2,891 chars │ ok                   │
+# │ OpenDataLoader   │  0.12s │        97% │ 3,310 chars │ best                 │
+# └──────────────────┴────────┴────────────┴─────────────┴──────────────────────┘
+```
+
+## Python API
+
+### Text extraction
+
+```python
+import pdfmux
+
+text = pdfmux.extract_text("report.pdf")                    # -> str (markdown)
+text = pdfmux.extract_text("report.pdf", quality="fast")    # PyMuPDF only, instant
+text = pdfmux.extract_text("report.pdf", quality="high")    # LLM-assisted
+```
+
+### Structured extraction
+
+```python
+data = pdfmux.extract_json("report.pdf")
+# data["page_count"]   -> 12
+# data["confidence"]   -> 0.91
+# data["ocr_pages"]    -> [2, 5, 8]
+# data["pages"][0]["key_values"]  -> [{"key": "Date", "value": "2026-02-28"}]
+# data["pages"][0]["tables"]      -> [{"headers": [...], "rows": [...]}]
+```
+
+### RAG chunking
+
+```python
+chunks = pdfmux.chunk("report.pdf", max_tokens=500)
 for c in chunks:
     print(f"{c['title']}: {c['tokens']} tokens (pages {c['page_start']}-{c['page_end']})")
 ```
 
-All three functions accept `quality="fast"`, `"standard"` (default), or `"high"`.
+### Schema-guided extraction
 
-### Types & Errors
+```python
+data = pdfmux.extract_json("invoice.pdf", schema="invoice")
+# Uses built-in invoice preset: extracts date, vendor, line items, totals
+# Also accepts a path to a custom JSON Schema file
+```
 
-Every object in the pipeline is typed and immutable. All types and errors are exported from the top-level package.
+### Streaming (bounded memory)
+
+```python
+from pdfmux.extractors import get_extractor
+
+ext = get_extractor("fast")
+for page in ext.extract("large-500-pages.pdf"):  # Iterator[PageResult]
+    process(page.text)  # constant memory, even on 500-page PDFs
+```
+
+### Types and errors
 
 ```python
 from pdfmux import (
@@ -204,333 +268,52 @@ from pdfmux import (
     PageQuality,          # GOOD, BAD, EMPTY
 
     # Data objects (frozen dataclasses)
-    PageResult,           # Single page: text, page_num, confidence, quality, extractor
-    DocumentResult,       # Full document: pages, source, confidence, extractor_used
-    Chunk,                # Section-aware chunk: title, text, page_start, page_end, tokens
+    PageResult,           # page: text, page_num, confidence, quality, extractor
+    DocumentResult,       # document: pages, source, confidence, extractor_used
+    Chunk,                # chunk: title, text, page_start, page_end, tokens
 
     # Errors
-    PdfmuxError,          # Base — catch this to handle all pdfmux errors
-    FileError,            # File not found, unreadable, not a PDF
-    ExtractionError,      # Extraction failed
-    ExtractorNotAvailable,# Requested extractor not installed
-    FormatError,          # Invalid output format
-    AuditError,           # Audit could not complete
+    PdfmuxError,          # base -- catch this for all pdfmux errors
+    FileError,            # file not found, unreadable, not a PDF
+    ExtractionError,      # extraction failed
+    ExtractorNotAvailable,# requested backend not installed
+    FormatError,          # invalid output format
+    AuditError,           # audit could not complete
 )
 ```
 
-Catch broad or narrow:
+## Framework Integrations
+
+### LangChain
+
+```bash
+pip install langchain-pdfmux
+```
 
 ```python
-try:
-    text = pdfmux.extract_text("report.pdf")
-except pdfmux.ExtractorNotAvailable as e:
-    print(f"Missing dependency: {e}")
-except pdfmux.PdfmuxError as e:
-    print(f"pdfmux error: {e}")
+from langchain_pdfmux import PDFMuxLoader
+
+loader = PDFMuxLoader("report.pdf", quality="standard")
+docs = loader.load()  # -> list[Document] with confidence metadata
 ```
 
-Stream pages with bounded memory:
+### LlamaIndex
+
+```bash
+pip install llama-index-readers-pdfmux
+```
 
 ```python
-from pdfmux.extractors import get_extractor
+from llama_index.readers.pdfmux import PDFMuxReader
 
-ext = get_extractor("fast")
-for page in ext.extract("large-500-pages.pdf"):  # Iterator[PageResult]
-    process(page.text)  # bounded memory, even on 500-page PDFs
+reader = PDFMuxReader(quality="standard")
+docs = reader.load_data("report.pdf")  # -> list[Document]
 ```
 
-## CLI Usage
+### MCP Server (AI Agents)
 
-### Convert a single file
+Listed on [mcpservers.org](https://mcpservers.org). One-line setup:
 
-```bash
-pdfmux invoice.pdf
-# ✓ invoice.pdf → invoice.md (2 pages, 95% confidence, via pymupdf4llm)
-```
-
-### With OCR installed (image-heavy PDFs)
-
-```bash
-pdfmux pitch-deck.pdf
-# ✓ pitch-deck.pdf → pitch-deck.md (12 pages, 85% confidence, 6 pages OCR'd, via pymupdf4llm + rapidocr)
-```
-
-### Output location
-
-```bash
-pdfmux report.pdf -o ./converted/report.md
-```
-
-### Batch convert
-
-```bash
-pdfmux ./docs/ -o ./output/
-# Converting 12 PDFs from ./docs/...
-#   ✓ invoice.pdf → invoice.md (95%)
-#   ✓ contract.pdf → contract.md (92%)
-#   ✓ scan.pdf → scan.md (87%)
-# Done: 12 converted, 0 failed
-```
-
-### Output formats
-
-```bash
-# markdown (default)
-pdfmux report.pdf
-
-# json — structured output with metadata
-pdfmux report.pdf -f json
-
-# llm — section-aware chunks with token estimates
-pdfmux report.pdf -f llm
-
-# csv — extracts tables only
-pdfmux data.pdf -f csv
-```
-
-### Quality presets
-
-```bash
-# fast — PyMuPDF only, no ML, no audit (instant, free)
-pdfmux report.pdf -q fast
-
-# standard — multi-pass pipeline (default)
-pdfmux report.pdf -q standard
-
-# high — use LLM for everything (slow, costs ~$0.01/doc)
-pdfmux report.pdf -q high
-```
-
-### Diagnostics
-
-```bash
-# check what's installed
-pdfmux doctor
-# ┌──────────────┬─────────────┬─────────┬──────────────────────────────┐
-# │ Extractor    │ Status      │ Version │ Install                      │
-# ├──────────────┼─────────────┼─────────┼──────────────────────────────┤
-# │ PyMuPDF      │ ✓ installed │ 1.25.3  │                              │
-# │ RapidOCR     │ ✓ installed │ 3.0.6   │                              │
-# │ Docling      │ ✗ missing   │ —       │ pip install pdfmux[tables]   │
-# └──────────────┴─────────────┴─────────┴──────────────────────────────┘
-
-# benchmark all extractors on a file
-pdfmux bench report.pdf
-# ┌──────────────┬────────┬────────────┬─────────────┬──────────────────────┐
-# │ Extractor    │   Time │ Confidence │      Output │ Status               │
-# ├──────────────┼────────┼────────────┼─────────────┼──────────────────────┤
-# │ PyMuPDF      │  0.02s │        95% │ 3,241 chars │ ✓                    │
-# │ Multi-pass   │  0.03s │        95% │ 3,241 chars │ ✓ all pages good     │
-# │ RapidOCR     │  4.20s │        88% │ 2,891 chars │ ✓                    │
-# └──────────────┴────────┴────────────┴─────────────┴──────────────────────┘
-```
-
-### Analyze a PDF
-
-```bash
-pdfmux analyze report.pdf
-# report.pdf — 12 pages
-#
-# ┌──────┬────────────┬────────────────────────┬────────┐
-# │ Page │ Type       │ Quality                │  Chars │
-# ├──────┼────────────┼────────────────────────┼────────┤
-# │    1 │ digital    │ good → fast extraction │  1,204 │
-# │    2 │ graphical  │ bad → needs OCR        │     42 │
-# │    3 │ digital    │ good → fast extraction │  2,108 │
-# └──────┴────────────┴────────────────────────┴────────┘
-#
-#   Confidence: 91%
-#   OCR pages:  2
-#   Extractor:  pymupdf4llm + rapidocr (1 page re-extracted)
-```
-
-### Other options
-
-```bash
-# show confidence score in output
-pdfmux report.pdf --confidence
-
-# print to stdout instead of file
-pdfmux report.pdf --stdout
-```
-
-### All CLI options
-
-| Option | Short | Default | Description |
-|--------|-------|---------|-------------|
-| `--output` | `-o` | Same dir, `.md` ext | Output file or directory |
-| `--format` | `-f` | `markdown` | Output format: `markdown`, `json`, `csv`, `llm` |
-| `--quality` | `-q` | `standard` | Quality: `fast`, `standard`, `high` |
-| `--schema` | `-s` | `none` | JSON schema file or preset for structured extraction |
-| `--confidence` | | `false` | Include confidence score in output |
-| `--stdout` | | `false` | Print to stdout instead of writing file |
-
-## Output Formats
-
-### Markdown (default)
-
-Clean markdown optimized for LLM consumption:
-
-```markdown
-# Quarterly Report
-
-Revenue for Q3 increased by 15% year-over-year...
-
-## Financial Summary
-
-| Metric | Q3 2025 | Q3 2024 |
-|--------|---------|---------|
-| Revenue | $12.3M | $10.7M |
-| Profit | $3.1M | $2.4M |
-```
-
-### JSON
-
-Structured output with metadata:
-
-```json
-{
-  "source": "report.pdf",
-  "converter": "pdfmux",
-  "extractor": "pymupdf4llm + rapidocr (3 pages re-extracted)",
-  "page_count": 12,
-  "confidence": 0.91,
-  "ocr_pages": [2, 5, 8],
-  "warnings": [],
-  "content": "# Quarterly Report\n\nRevenue for Q3...",
-  "pages": [
-    { "page": 1, "content": "# Quarterly Report..." },
-    { "page": 2, "content": "## Financial Summary..." }
-  ]
-}
-```
-
-### LLM (chunked JSON)
-
-Section-aware chunks with token estimates, designed for RAG pipelines:
-
-```json
-{
-  "document": "report.pdf",
-  "chunks": [
-    {
-      "title": "Quarterly Report",
-      "text": "Revenue for Q3 increased by 15%...",
-      "page_start": 1,
-      "page_end": 2,
-      "tokens": 312,
-      "confidence": 0.95
-    },
-    {
-      "title": "Financial Summary",
-      "text": "| Metric | Q3 2025 | Q3 2024 |...",
-      "page_start": 3,
-      "page_end": 3,
-      "tokens": 156,
-      "confidence": 0.95
-    }
-  ]
-}
-```
-
-### CSV
-
-Extracts tables from the document:
-
-```csv
-Metric,Q3 2025,Q3 2024
-Revenue,$12.3M,$10.7M
-Profit,$3.1M,$2.4M
-```
-
-Raises an error if no tables are found.
-
-## Structured Extraction
-
-*New in v1.1.0, improved in v1.2.0.* Extract structured data from invoices, bank statements, and forms — no LLM, no cloud, no cost.
-
-pdfmux auto-detects key-value pairs (colon-separated, whitespace-aligned, dot-leader patterns), extracts tables as typed JSON, and normalizes dates, amounts, and rates into clean values.
-
-### CLI
-
-```bash
-# JSON output with auto-detected structure
-pdfmux statement.pdf -f json
-
-# Schema-guided extraction — map to your own fields
-pdfmux invoice.pdf --schema invoice.schema.json
-
-# Use a built-in preset
-pdfmux statement.pdf --schema bank-statement
-```
-
-When `--schema` is provided, the format auto-switches to JSON. Fields are matched using fuzzy string similarity — no exact key names required.
-
-### Python API
-
-```python
-import pdfmux
-
-data = pdfmux.extract_json("statement.pdf")
-# data["pages"][0]["key_values"]  → extracted label: value pairs
-# data["pages"][0]["tables"]      → headers + rows as structured JSON
-```
-
-### What gets extracted
-
-**Key-value pairs** — detected from `Label: Value`, `Label    Value` (whitespace-aligned), and `Label.......Value` (dot-leader) patterns:
-
-```json
-{"key": "Statement Date", "value": "2026-02-28", "page_num": 0}
-```
-
-**Tables** — headers and rows as typed arrays:
-
-```json
-{
-  "headers": ["Date", "Description", "Amount"],
-  "rows": [["2026-02-01", "Payment received", "1,234.50"]]
-}
-```
-
-**Normalized values** — dates become ISO 8601, amounts get parsed with currency and direction, rates get period detection:
-
-```json
-{
-  "amount": 1234.50,
-  "direction": "debit",
-  "currency": "AED"
-}
-```
-
-### Schema-guided mapping
-
-Pass a JSON Schema and pdfmux maps extracted data to your fields using fuzzy matching + type coercion. Array fields map from tables, scalar fields map from key-value pairs. No LLM required.
-
-```json
-{
-  "properties": {
-    "invoice_date": {"type": "string", "format": "date"},
-    "total_amount": {"type": "number"},
-    "line_items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "description": {"type": "string"},
-          "amount": {"type": "number"}
-        }
-      }
-    }
-  }
-}
-```
-
-## MCP Server
-
-pdfmux includes a built-in MCP (Model Context Protocol) server so AI agents can read PDFs natively. Agents receive confidence scores, warnings, and structured extraction data (key-value pairs, tables, normalized values) alongside the text.
-
-### Claude Desktop / Cursor (one-line setup)
 ```json
 {
   "mcpServers": {
@@ -542,126 +325,93 @@ pdfmux includes a built-in MCP (Model Context Protocol) server so AI agents can 
 }
 ```
 
-### Claude Code
+Or via Claude Code:
+
 ```bash
 claude mcp add pdfmux -- npx -y pdfmux-mcp
 ```
 
-### Smithery
-```bash
-npx -y @smithery/cli install @drumworks/pdfmux --client claude
+Tools exposed: `convert_pdf`, `analyze_pdf`, `extract_structured`, `get_pdf_metadata`, `batch_convert`.
+
+## BYOK LLM Configuration
+
+pdfmux supports any LLM via 5 lines of YAML. Bring your own keys -- nothing leaves your machine unless you configure it to.
+
+```yaml
+# ~/.pdfmux/llm.yaml
+provider: claude          # gemini | claude | openai | ollama | any OpenAI-compatible
+model: claude-sonnet-4-20250514
+api_key: ${ANTHROPIC_API_KEY}
+base_url: https://api.anthropic.com  # optional, for custom endpoints
+max_cost_per_page: 0.02   # budget cap
 ```
 
-### Manual setup
+Supported providers:
 
-```bash
-pdfmux serve
+| Provider | Models | Local? | Cost |
+|----------|--------|--------|------|
+| Gemini | 2.5 Flash, 2.5 Pro | No | ~$0.01/page |
+| Claude | Sonnet, Opus | No | ~$0.015/page |
+| GPT-4o | GPT-4o, GPT-4o-mini | No | ~$0.01/page |
+| Ollama | Any local model | Yes | Free |
+| Custom | Any OpenAI-compatible API | Configurable | Varies |
+
+## Benchmark
+
+Tested on [opendataloader-bench](https://github.com/opendataloader-project/opendataloader-bench) -- 200 real-world PDFs across financial reports, legal filings, academic papers, and scanned documents.
+
+| Engine | Overall | Reading Order | Tables (TEDS) | Headings | Requires |
+|--------|---------|---------------|---------------|----------|----------|
+| opendataloader hybrid | 0.909 | 0.935 | 0.928 | 0.828 | API calls ($) |
+| **pdfmux** | **0.900** | **0.918** | **0.887** | **0.844** | **CPU only, $0** |
+| docling | 0.877 | 0.900 | 0.887 | 0.802 | ~500MB models |
+| marker | 0.861 | 0.890 | 0.808 | 0.796 | GPU recommended |
+| opendataloader local | 0.844 | 0.913 | 0.494 | 0.761 | CPU only |
+| mineru | 0.831 | 0.857 | 0.873 | 0.743 | GPU + ~2GB models |
+
+#2 overall, #1 among free tools. 99% of the paid #1 score at zero cost per page. Best heading detection of any engine tested.
+
+## Confidence Scoring
+
+Every result includes a 4-signal confidence score:
+
+- **95-100%** -- clean digital text, fully extractable
+- **80-95%** -- good extraction, minor OCR noise on some pages
+- **50-80%** -- partial extraction, some pages unrecoverable
+- **<50%** -- significant content missing, warnings included
+
+When confidence drops below 80%, pdfmux tells you exactly what went wrong and how to fix it:
+
+```
+Page 4: 32% confidence. 0 chars extracted from image-heavy page.
+  -> Install pdfmux[ocr] for RapidOCR support on 6 image-heavy pages.
 ```
 
-Add to your config:
+## Cost Modes
 
-```json
-{
-  "mcpServers": {
-    "pdfmux": {
-      "command": "pdfmux",
-      "args": ["serve"]
-    }
-  }
-}
-```
+| Mode | Behavior | Typical cost |
+|------|----------|-------------|
+| economy | Rule-based backends only. No LLM calls. | $0/page |
+| balanced | LLM only for pages that fail rule-based extraction. | ~$0.002/page avg |
+| premium | LLM on every page for maximum quality. | ~$0.01/page |
 
-Or via Claude Code:
+Set a hard budget cap: `--budget 0.50` stops LLM calls when spend reaches $0.50 per document.
 
-```bash
-claude mcp add pdfmux -- pdfmux serve
-```
+## Why pdfmux?
 
-### Tools
-
-The server exposes three tools:
-
-```json
-{
-  "name": "convert_pdf",
-  "description": "Convert a PDF to AI-readable Markdown",
-  "parameters": {
-    "file_path": "string — absolute path to the PDF",
-    "format": "string — markdown (default)",
-    "quality": "string — fast | standard | high (default: standard)"
-  }
-}
-```
-
-When confidence is below 80% or there are warnings, the response includes extraction metadata (confidence score, extractor used, OCR page numbers, actionable warnings).
-
-## Examples
-
-See the [`examples/`](examples/) directory for runnable scripts:
-
-- [`basic_usage.py`](examples/basic_usage.py) — extract_text, extract_json, load_llm_context
-- [`batch_processing.py`](examples/batch_processing.py) — directory processing with progress
-- [`mcp_agent.py`](examples/mcp_agent.py) — MCP config and tool examples
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | Only for `pdfmux[llm]` | Google Gemini API key for LLM extraction |
-| `GOOGLE_API_KEY` | Alternative | Alternative env var for Gemini API key |
-
-No environment variables are needed for the base install or the `tables`/`ocr` extras.
-
-## Why Not Just Use X?
+pdfmux is not another PDF extractor. It is the orchestration layer that picks the right extractor per page, verifies the result, and retries failures.
 
 | Tool | Good at | Limitation |
 |------|---------|-----------|
-| Marker | GPU ML extraction | Overkill for digital PDFs, needs GPU |
+| PyMuPDF | Fast digital text | Cannot handle scans or image layouts |
 | Docling | Tables (97.9% accuracy) | Slow on non-table documents |
-| pymupdf4llm | Fast digital text | Can't handle scanned or image-heavy layouts |
-| MinerU | Full ML pipeline | Heavy, complex setup |
-| MarkItDown | Wide format support | Not optimized for any specific PDF type |
-| **pdfmux** | **Self-healing extraction** | Audits every page, re-extracts bad ones |
+| Marker | GPU ML extraction | Needs GPU, overkill for digital PDFs |
+| Unstructured | Enterprise platform | Complex setup, paid tiers |
+| LlamaParse | Cloud-native | Requires API keys, not local |
+| Reducto | High accuracy | $0.015/page, closed source |
+| **pdfmux** | **Orchestrates all of the above** | Routes per page, audits, re-extracts |
 
-pdfmux doesn't compete with these tools — it orchestrates them. The key insight: no single extractor wins on everything. pdfmux routes each page to the right one, verifies the result, and re-extracts if needed.
-
-## Project Structure
-
-```
-src/pdfmux/
-├── __init__.py         # Public API: extract_text, extract_json, load_llm_context + type/error re-exports
-├── py.typed            # PEP 561 marker — mypy/pyright recognize pdfmux as typed
-├── types.py            # Frozen dataclasses + enums: Quality, OutputFormat, PageResult, DocumentResult, Chunk
-├── errors.py           # Exception hierarchy: PdfmuxError → FileError, ExtractionError, FormatError, AuditError
-├── pipeline.py         # Multi-pass routing + merge + process_batch() + security limits
-├── detect.py           # PDF type classification + layout detection
-├── audit.py            # 5-check per-page confidence scoring + quality classification
-├── regions.py          # Region OCR — surgical image extraction for bad pages
-├── parallel.py         # Parallel OCR dispatch with thread pool
-├── chunking.py         # Section-aware splitting + token estimation
-├── kv_extract.py       # Key-value pair extraction (colon, whitespace, dot-leader)
-├── normalize.py        # Date/amount/rate normalization (pure Python)
-├── schema.py           # Schema-guided extraction (fuzzy matching, type coercion)
-├── headings.py         # Heading detection via font-size analysis
-├── table_fallback.py   # Fallback table extraction when Docling is unavailable
-├── postprocess.py      # Text cleanup
-├── mcp_server.py       # MCP server (stdio JSON-RPC) with path restrictions
-├── cli.py              # Typer CLI (convert, analyze, serve, doctor, bench, version)
-├── extractors/
-│   ├── __init__.py     # Extractor protocol + @register decorator + priority-ordered registry
-│   ├── fast.py         # PyMuPDF — handles 90% of PDFs (priority 10)
-│   ├── rapid_ocr.py    # RapidOCR — lightweight OCR (~200MB, priority 20)
-│   ├── tables.py       # Docling — table-heavy docs (priority 40)
-│   ├── ocr.py          # Surya — legacy heavy OCR (priority 30)
-│   └── llm.py          # Gemini Flash — hardest cases (priority 50)
-├── integrations/
-│   ├── langchain.py    # PDFMuxLoader for LangChain
-│   └── llamaindex.py   # PDFMuxReader for LlamaIndex
-└── formatters/
-    ├── markdown.py     # Markdown output
-    ├── json_fmt.py     # JSON + LLM chunked output
-    └── csv_fmt.py      # CSV output (tables only)
-```
+Open source Reducto alternative: what costs $0.015/page elsewhere is free with pdfmux's rule-based backends, or ~$0.002/page average with BYOK LLM fallback.
 
 ## Development
 
@@ -671,13 +421,18 @@ cd pdfmux
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# run tests (151 tests)
-pytest
-
-# lint
+pytest              # 151 tests
 ruff check src/ tests/
 ruff format src/ tests/
 ```
+
+## Contributing
+
+1. Fork the repo
+2. Create a branch (`git checkout -b feature/your-feature`)
+3. Write tests for new functionality
+4. Ensure `pytest` and `ruff check` pass
+5. Open a PR
 
 ## License
 
