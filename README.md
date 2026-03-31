@@ -530,11 +530,33 @@ Pass a JSON Schema and pdfmux maps extracted data to your fields using fuzzy mat
 
 pdfmux includes a built-in MCP (Model Context Protocol) server so AI agents can read PDFs natively. Agents receive confidence scores, warnings, and structured extraction data (key-value pairs, tables, normalized values) alongside the text.
 
+### Claude Desktop / Cursor (one-line setup)
+```json
+{
+  "mcpServers": {
+    "pdfmux": {
+      "command": "npx",
+      "args": ["-y", "pdfmux-mcp"]
+    }
+  }
+}
+```
+
+### Claude Code
+```bash
+claude mcp add pdfmux -- npx -y pdfmux-mcp
+```
+
+### Smithery
+```bash
+npx -y @smithery/cli install @drumworks/pdfmux --client claude
+```
+
+### Manual setup
+
 ```bash
 pdfmux serve
 ```
-
-### Claude Desktop / Cursor
 
 Add to your config:
 
@@ -549,7 +571,7 @@ Add to your config:
 }
 ```
 
-### Claude Code
+Or via Claude Code:
 
 ```bash
 claude mcp add pdfmux -- pdfmux serve
