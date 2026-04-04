@@ -63,6 +63,7 @@ def _clean_false_headings(text: str) -> str:
         return m.group(0).lstrip("#").lstrip()
 
     text = _FALSE_HEADING_RE.sub(_demote, text)
+    text = _merge_consecutive_headings(text)
     return _clean_toc_page_headings(text)
 
 
