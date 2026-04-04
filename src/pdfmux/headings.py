@@ -79,7 +79,7 @@ def _merge_consecutive_headings(text: str) -> str:
     i = 0
     while i < len(lines):
         m = re.match(r"^(#{1,6})\s+(.*)", lines[i])
-        if (m and len(m.group(2)) <= 10
+        if (m and len(m.group(2)) <= 15
             and not re.match(r"^\d+$", m.group(2).strip())  # don't merge pure numbers
             and i + 1 < len(lines)):
             m2 = re.match(r"^#{1,6}\s+(.*)", lines[i + 1])
