@@ -132,21 +132,25 @@ def ocr_image_to_table(
             return None
 
         # Validate: data rows must have substantial numeric content
-        # (real data tables have numbers; chart OCR has labels/text)
+        # AND most cells must be non-empty (chart axis OCR produces sparse rows)
         import re
         total_data_cells = 0
+        filled_data_cells = 0
         numeric_data_cells = 0
         for l in lines[2:]:  # skip header + separator
-            for cell in l.split("|"):
-                cell = cell.strip()
-                if not cell:
-                    continue
+            cells_in_row = [c.strip() for c in l.split("|")[1:-1]]  # exclude outer pipes
+            for cell in cells_in_row:
                 total_data_cells += 1
-                if re.match(r"^[\d.E\-+,]+$", cell.replace(" ", "")):
-                    numeric_data_cells += 1
+                if cell:
+                    filled_data_cells += 1
+                    if re.match(r"^[\d.E\-+,]+$", cell.replace(" ", "")):
+                        numeric_data_cells += 1
         if total_data_cells > 0:
-            numeric_pct = numeric_data_cells / total_data_cells
-            if numeric_pct < 0.9:  # < 90% numeric = probably not a data table
+            fill_pct = filled_data_cells / total_data_cells
+            if fill_pct < 0.5:  # < 50% filled = sparse (chart axis labels)
+                return None
+            numeric_pct = numeric_data_cells / max(filled_data_cells, 1)
+            if numeric_pct < 0.5:  # < 50% of filled cells are numeric
                 return None
 
         return "\n".join(lines)
