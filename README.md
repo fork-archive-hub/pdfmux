@@ -363,13 +363,13 @@ Tested on [opendataloader-bench](https://github.com/opendataloader-project/opend
 | Engine | Overall | Reading Order | Tables (TEDS) | Headings | Requires |
 |--------|---------|---------------|---------------|----------|----------|
 | opendataloader hybrid | 0.909 | 0.935 | 0.928 | 0.828 | API calls ($) |
-| **pdfmux** | **0.900** | **0.918** | **0.887** | **0.844** | **CPU only, $0** |
+| **pdfmux** | **0.905** | **0.920** | **0.911** | **0.852** | **CPU only, $0** |
 | docling | 0.877 | 0.900 | 0.887 | 0.802 | ~500MB models |
 | marker | 0.861 | 0.890 | 0.808 | 0.796 | GPU recommended |
 | opendataloader local | 0.844 | 0.913 | 0.494 | 0.761 | CPU only |
 | mineru | 0.831 | 0.857 | 0.873 | 0.743 | GPU + ~2GB models |
 
-#2 overall, #1 among free tools. 99% of the paid #1 score at zero cost per page. Best heading detection of any engine tested.
+#2 overall, #1 among free tools. 99.5% of the paid #1 score at zero cost per page. Best heading detection of any engine tested. Image table OCR extracts tables embedded as images.
 
 ## Confidence Scoring
 

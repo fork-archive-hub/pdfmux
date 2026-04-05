@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.5.0 (2026-04-05)
+
+### Changed
+- **Benchmark score: 0.900 -> 0.905** (+0.5%) on opendataloader-bench. Now within 0.4% of the paid #1.
+- **Table score (TEDS): 0.887 -> 0.911** (+2.7%) — image table OCR extracts tables embedded as images using RapidOCR with spatial clustering for row/column reconstruction.
+- **Heading score (MHS): 0.844 -> 0.852** (+0.9%) — ML heading classifier (sklearn GradientBoosting, 212KB) as fallback when font-size heuristics find nothing. Consecutive heading merge ("# III." + "# Regulatory..." → "# III. Regulatory..."). Digit page-number filter using y-position.
+- **Reading order (NID): 0.918 -> 0.920** — minor improvements from heading cleanup.
+- 98 docs improved, 3 regressed across the 200-doc benchmark.
+
+### Added
+- `src/pdfmux/image_table_ocr.py` — OCR-based table extraction from image regions. Renders image at 300 DPI, runs RapidOCR, clusters text boxes into rows/columns, outputs markdown pipe table. Safety filters: 50%+ fill rate, 50%+ numeric density.
+- `src/pdfmux/ml_headings.py` — ML heading classifier using sklearn GradientBoosting on 12 font features. Used as fallback when heuristic detection finds zero headings.
+- `src/pdfmux/models/heading_classifier.pkl` — trained model (212KB, doc-level cross-validated).
+
 ## 1.4.0 (2026-03-23)
 
 ### Added
