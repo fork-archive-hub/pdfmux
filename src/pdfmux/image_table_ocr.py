@@ -131,6 +131,24 @@ def ocr_image_to_table(
         if len(set(pipe_counts)) > 2:
             return None
 
+        # Validate: data rows must have substantial numeric content
+        # (real data tables have numbers; chart OCR has labels/text)
+        import re
+        total_data_cells = 0
+        numeric_data_cells = 0
+        for l in lines[2:]:  # skip header + separator
+            for cell in l.split("|"):
+                cell = cell.strip()
+                if not cell:
+                    continue
+                total_data_cells += 1
+                if re.match(r"^[\d.E\-+,]+$", cell.replace(" ", "")):
+                    numeric_data_cells += 1
+        if total_data_cells > 0:
+            numeric_pct = numeric_data_cells / total_data_cells
+            if numeric_pct < 0.3:  # < 30% numeric = probably not a data table
+                return None
+
         return "\n".join(lines)
 
     except Exception as e:
