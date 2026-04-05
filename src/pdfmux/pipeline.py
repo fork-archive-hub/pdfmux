@@ -204,6 +204,55 @@ def process(
         unrecovered_count=unrecovered,
     )
 
+    # Step 3.5: Image table OCR — last resort for image-embedded tables
+    # Only fires when: page has images, NO pipe tables found by any method,
+    # and the image is large enough to contain a table
+    try:
+        from pdfmux.image_table_ocr import ocr_image_to_table
+        import fitz as _fitz
+
+        _doc = _fitz.open(str(file_path))
+        for i, p in enumerate(pages):
+            # Skip if page already has pipe tables
+            pipe_count = sum(1 for line in p.text.split("\n")
+                             if line.strip().startswith("|") and line.strip().endswith("|"))
+            if pipe_count >= 3:
+                continue
+
+            # Check for substantial images on this page
+            if p.page_num >= len(_doc):
+                continue
+            _page = _doc[p.page_num]
+            pw, ph = _page.rect.width, _page.rect.height
+
+            for block in _page.get_text("dict")["blocks"]:
+                if block.get("type") != 1:  # image
+                    continue
+                bbox = block["bbox"]
+                bw = bbox[2] - bbox[0]
+                bh = bbox[3] - bbox[1]
+                # Must be substantial but not full-page
+                if (bw > pw * 0.5 and bh > ph * 0.1
+                        and not (bw > pw * 0.95 and bh > ph * 0.8)):
+                    table_md = ocr_image_to_table(file_path, p.page_num, tuple(bbox))
+                    if table_md:
+                        pages[i] = PageResult(
+                            page_num=p.page_num,
+                            text=p.text + "\n\n" + table_md,
+                            confidence=p.confidence,
+                            quality=p.quality,
+                            extractor=p.extractor + "+image_ocr",
+                            image_count=p.image_count,
+                            tables=p.tables,
+                        )
+                        logger.info("Image table OCR: page %d", p.page_num)
+                        break  # one table per page max
+        _doc.close()
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("Image table OCR skipped: %s", e)
+
     # Step 4: Build the merged text
     merged_text = "\n\n".join(p.text for p in pages if p.text.strip())
 
